@@ -142,7 +142,7 @@ export function useWorkspace(client: SupabaseClient | null, workspace: string, i
   }
 
   async function approve(version: Version) {
-    if (version.document.status !== "Tested" || !canBake(version.document)) throw new Error("Only a complete, tested version can be approved.");
+    if (!["Tested", "Ready for Testing"].includes(version.document.status) || !canBake(version.document)) throw new Error("Only a complete version that is ready or tested can be preferred.");
     if (client) await approveVersion(client, workspace, version.recipe_id, version.id);
     const snapshot = ref.current;
     commit({ ...snapshot, library: { ...snapshot.library, approvals: { ...snapshot.library.approvals, [version.recipe_id]: version.id } } });
@@ -177,7 +177,7 @@ export function useWorkspace(client: SupabaseClient | null, workspace: string, i
       const { data, error } = await client.from("recipe_imports")
         .select("id,recipe_id,version_id,previous_version_id,baseline_approval_id,imported_at,status,issues,payload")
         .eq("workspace_id", workspace).filter("payload->>kind", "eq", "recipe")
-        .in("status", ["ready_for_review", "incomplete", "approved", "rejected"])
+        .in("status", ["ready_for_review", "incomplete", "approved", "rejected", "published", "already_published"])
         .order("imported_at", { ascending: false }).order("id").range(start, start + 99);
       if (error) throw new Error(error.message);
       all.push(...(data as Receipt[]));

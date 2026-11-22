@@ -97,8 +97,8 @@ export async function approveVersion(client: SupabaseClient, workspace: string, 
   const version = await client.from("recipe_versions").select("document").eq("workspace_id", workspace)
     .eq("recipe_id", recipeId).eq("id", versionId).maybeSingle();
   if (version.error) throw new Error(version.error.message);
-  if (!version.data || version.data.document.status !== "Tested" || !canBake(version.data.document)) {
-    throw new Error("Only a complete, tested version can be approved.");
+  if (!version.data || !["Tested", "Ready for Testing"].includes(version.data.document.status) || !canBake(version.data.document)) {
+    throw new Error("Only a complete version that is ready or tested can be preferred.");
   }
   const table = client.from("recipe_approvals");
   const result = await table.insert({ workspace_id: workspace, recipe_id: recipeId, version_id: versionId });

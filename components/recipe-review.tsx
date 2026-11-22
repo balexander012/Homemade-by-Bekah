@@ -12,7 +12,7 @@ export type Receipt = {
   previous_version_id: string | null;
   baseline_approval_id: string | null;
   imported_at: string;
-  status: "ready_for_review" | "incomplete" | "approved" | "rejected";
+  status: "ready_for_review" | "incomplete" | "approved" | "rejected" | "published" | "already_published";
   issues: string[];
   payload: { kind: "recipe"; recipe: Recipe; sourceReferences: string[]; finalizedOn?: string };
 };
@@ -62,6 +62,7 @@ function ReviewCard({ entry, previous, stale, busy, decide, show }: {
   return <article className="panel stack compact">
     <div className="line"><h3>{recipe.name}</h3><Status>{{
       ready_for_review: "Ready for review", incomplete: "Needs details", approved: "Approved", rejected: "Rejected",
+      published: "Added to the app", already_published: "Already in the app",
     }[entry.status]}</Status></div>
     <p className="muted">Imported {new Date(entry.imported_at).toLocaleDateString()}{entry.payload.finalizedOn && ` · Finalized ${entry.payload.finalizedOn}`}</p>
     <p>{recipe.source || "Source to confirm"}</p>

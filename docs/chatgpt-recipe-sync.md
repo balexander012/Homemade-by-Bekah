@@ -2,15 +2,22 @@
 
 ## What Bekah does
 
-In the **Bekah Baking** project, ask ChatGPT to save a finalized recipe. ChatGPT uses its existing GitHub connection to submit one JSON file per recipe to the private repository. The app shows complete imports under **Recipes → Recipes to review**. Nothing is automatically approved. This flow does not depend on the MCP connection.
+In the **Bekah Baking** project, Bekah works out recipes with ChatGPT. When she is ready she says one of two things:
+
+- **"Put it in the app"** (or "finalize this recipe and add it to my app"). ChatGPT submits the recipe with `"publicationIntent": "publish"`. If the formula is complete and consistent it goes straight into **Recipes → Ready to bake** as the preferred version, and she can start a guided bake or add it to a plan right away. No second approval in the app.
+- **"Save this recipe so far."** ChatGPT submits it as a working draft (no `publicationIntent`, or `"draft"`). It keeps unresolved amounts and notes and waits for more work.
+
+If she gives a day to make it ("put it in the app, I want to make it Saturday"), ChatGPT adds a `schedule` with that date. The same submission puts the bake on the calendar, with the recipe attached when it was published.
+
+A recipe that ChatGPT marks for publishing but that still has missing or conflicting details is kept as a draft with the problems listed under **Recipes → Recipes to review**. Nothing is invented to fill a gap. A published recipe is **Ready for Testing** unless Bekah confirms she baked this exact formula, which makes it **Tested**. Putting a recipe in the app says nothing about cottage-food rules.
 
 Paste this prompt into the Bekah Baking project:
 
-> When I ask to find, save, or update a recipe in Homemade by Bekah, use the connected GitHub tools for the private repository `balexander012/Homemade-by-Bekah`. Read `docs/chatgpt-recipe-sync.md` and `recipe-imports/examples/recipe.json` on `main` for the format. Use only the project sources and conversations you can actually access. Preserve Bekah’s latest explicit decisions and the original source. Never invent a quantity, unit, yield, temperature, timing, instruction, filling, or other detail. Use the same recipe key for its revisions and a fresh UUID for each submission. Commit one validated JSON file per submission to `recipe-imports/pending/<UUID>.json` on `main`. Change only the inbox files. If a direct inbox commit is unavailable, open a pull request containing only those files. For a lookup, submit a `kind: "lookup"` request. Reuse the same file and UUID for a retry. Report the GitHub links and any uncertainty. Say whether GitHub accepted the submission or the Baking inbox run confirmed a draft. If you can’t read the run, say that processing is pending.
+> When I ask to find, save, or add a recipe in Homemade by Bekah, use the connected GitHub tools for the private repository `balexander012/Homemade-by-Bekah`. Read `docs/chatgpt-recipe-sync.md`, `recipe-imports/examples/recipe.json` and `recipe-imports/examples/recipe-publish.json` on `main` for the format. When I say to put a recipe in the app, finalize it, or add it to my app, set `"publicationIntent": "publish"` and `"verification": "Finalized"`. When I say to save it so far, leave `publicationIntent` out. Add `tested` only when I say I baked this exact version, with that date. If I name a day to make it, add `schedule` with that date in New York time and any time I gave. Use only the project sources and conversations you can actually access. Preserve my latest explicit decisions and the original source. Never invent a quantity, unit, yield, temperature, timing, instruction, filling, or other detail; list anything missing or conflicting in `issues`. If the recipe states a dough or portion weight, set `portionWeightGrams`. Use the same recipe key for its revisions and a fresh UUID for each submission. Commit one validated JSON file per submission to `recipe-imports/pending/<UUID>.json` on `main`. Change only the inbox files. For a lookup, submit a `kind: "lookup"` request. Reuse the same file and UUID for a retry. Tell me in plain words whether the recipe is now in the app, kept as a draft and why, and whether the bake was added to the calendar. If you can’t read the Baking inbox run, say that processing is pending.
 
 ## Recipe JSON
 
-The [complete machine-readable sample](../recipe-imports/examples/recipe.json) is a synthetic test fixture. Leave it in `examples`.
+The [draft sample](../recipe-imports/examples/recipe.json) and the [publish sample with a bake date](../recipe-imports/examples/recipe-publish.json) are synthetic test fixtures. Leave them in `examples`.
 
 | Field | Use |
 | --- | --- |
@@ -25,7 +32,11 @@ The [complete machine-readable sample](../recipe-imports/examples/recipe.json) i
 | `verification` | `Finalized` for an explicitly confirmed formula or `Needs review` for an incomplete submission requiring follow-up. |
 | `sourceReferences` | At least one source reference. Include a conversation title, date, message reference, file name, page, or URL where available. |
 | `issues` | A list of missing details or conflicts. Use an empty list only for an unambiguous recipe. |
-| `recipe` | The app’s recipe document from the sample. Always use `"status": "Draft"`. |
+| `publicationIntent` | Optional. `"publish"` when Bekah asks to put the recipe in the app. Leave it out (or use `"draft"`) to save a working draft. |
+| `tested` | Optional, publish only. `{ "testedOn": "YYYY-MM-DD", "notes": "..." }` when Bekah confirms she baked this exact formula. Without it the recipe is Ready for Testing. |
+| `portionWeightGrams` | Optional. The dough or batter weight per piece when the recipe states one. Publishing checks it against the listed gram weights. |
+| `schedule` | Optional. `{ "date": "YYYY-MM-DD", "title": "...", "start": "HH:MM", "end": "HH:MM", "target": 12, "notes": "..." }`. Only `date` is required. Creates a scheduled calendar event. |
+| `recipe` | The app’s recipe document from the sample. Always use `"status": "Draft"`. Publishing sets the stored status. |
 
 For a lookup, supply only the header, recipe identity fields and `name`. The run summary returns whether the recipe exists and its UUID on a unique match. It does not disclose the formula.
 
@@ -36,10 +47,15 @@ The initial imports should cover Jumbo Chocolate Chip Cookies, S’mores Cookies
 ## Processing, review, and retries
 
 - **Pending Import** is a new file on `main`. The **Baking inbox** workflow validates the file and its UUID. Invalid documents appear in the workflow summary with field paths when available.
-- A **Validated** document is sent to Supabase through a dedicated login with execute permission on its inbox function. A complete, unique submission becomes an immutable **Draft** and appears **Ready for review**. Incomplete submissions appear with their issues and do not add a library version.
+- A **Validated** document is sent to Supabase through a dedicated login with execute permission on its inbox function.
+- **Publish:** a complete submission with no issues becomes an immutable version marked **Ready for Testing** (or **Tested** with `tested`) and is made the preferred version. It shows under **Ready to bake** and in **Start baking**. Before publishing, the importer also checks that each step’s timer matches the minutes written in that step, that oven temperatures match the text, and that the gram weights fit `portionWeightGrams` × yield. Any problem keeps it as a draft with the reason.
+- **Draft:** a complete, unique submission becomes an immutable **Draft** and appears **Ready for review**. Incomplete submissions appear with their issues and do not add a library version.
+- **Schedule:** a `schedule` adds one **Scheduled** event on that date. A published recipe is attached at the requested target; a draft is mentioned in the event notes instead.
 - The database checks explicit IDs, stable keys, confirmed aliases, and normalized names across prior versions. Case, spacing, and punctuation differences match. A conflicting identity requires review. Supply confirmed aliases when a name genuinely changes.
-- Reusing an import ID with the same payload returns the original result. Reusing it with different content fails. An identical formula using new ingredient or step UUIDs matches the existing version. A changed formula creates a draft on the same recipe. The current approved version stays preferred.
-- In the app, open **Recipes → Recipes to review**. Expand **Compare with the previous version** to see differences. Choose **Approve draft** only after confirming you tested it, or **Reject draft** to dismiss it while keeping history. If the preferred version changed while a draft awaited review, create a new revision after comparing against the current version.
+- Reusing an import ID with the same payload returns the original result and never adds a second version or event. Reusing it with different content fails. An identical formula using new ingredient or step UUIDs matches the existing version: publishing it again reports **Already in the app**. A changed draft creates a draft on the same recipe and the preferred version stays. A changed published formula becomes the new preferred version; every earlier version is kept.
+- **Going back:** open the recipe, pick an earlier ready or tested version under **Version history**, and choose **Make preferred version**.
+- **Calendar events:** when a recipe gets a newer preferred version, scheduled events that use the older one show **Use the newer version**. Nothing changes until someone taps it, and the change goes through the normal revision check. Started and completed baking sessions keep the version they were baked with.
+- Reviewing in the app is optional. Open **Recipes → Recipes to review** to see drafts. Expand **Compare with the previous version** to see differences. Choose **Approve draft** after testing it, or **Reject draft** to dismiss it while keeping history. If the preferred version changed while a draft awaited review, create a new revision after comparing against the current version.
 - See **Actions → Baking inbox → Summary** for each result. For a temporary connection failure, rerun the workflow on `main` with the same import UUID. For corrected data, submit a new file with a new UUID. Remove or move an invalid inbox file after resolving it so subsequent runs can report success. Git history and the database preserve successful receipts.
 
 ## Calendar and Today’s Plan

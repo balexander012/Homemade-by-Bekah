@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { reviewIssues, recipeInboxSchema } from "../lib/sync-import";
+import { activeVersions, canBake, type Version } from "../lib/domain";
 
 const db = new PGlite();
 const baker = "10000000-0000-4000-8000-000000000001";
@@ -33,7 +34,7 @@ beforeAll(async () => {
     grant usage on schema auth, storage to anon, authenticated;
     grant select, insert on storage.objects to anon, authenticated;
   `);
-  for (const file of ["202611220001_workspace.sql", "202611220002_integration.sql", "202611220003_photo_references.sql", "202611220004_chatgpt_recipe_sync.sql"]) {
+  for (const file of ["202611220001_workspace.sql", "202611220002_integration.sql", "202611220003_photo_references.sql", "202611220004_chatgpt_recipe_sync.sql", "202611220005_direct_recipe_publish.sql"]) {
     await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"));
   }
   await db.exec(`
@@ -171,5 +172,100 @@ describe("the GitHub recipe inbox", () => {
     await as("authenticated", { sub: baker });
     expect((await db.query("select document->>'date' as date, document ? 'start' as has_start from public.planner_records where id=$1", [recordId])).rows)
       .toEqual([{ date: "2026-11-28", has_start: false }]);
+  });
+});
+
+describe("direct publication from the recipe inbox", () => {
+  const sha = "b".repeat(40);
+  type Result = { status: string; recipeId: string; versionId: string; eventId: string | null; replayed: boolean };
+  async function submit(input: unknown) {
+    const parsed = recipeInboxSchema.parse(input);
+    const result = await db.query<{ result: Result }>("select baking_import.submit_recipe($1::jsonb,$2::text[],$3) as result",
+      [JSON.stringify(parsed), parsed.kind === "recipe" ? reviewIssues(parsed) : [], sha]);
+    return result.rows[0].result;
+  }
+  async function library() {
+    await as("authenticated", { sub: baker });
+    const versions = (await db.query<Version>("select id, recipe_id, created_at::text, document from public.recipe_versions order by created_at desc, id")).rows;
+    const approvals = Object.fromEntries((await db.query<{ recipe_id: string; version_id: string }>("select recipe_id, version_id from public.recipe_approvals")).rows
+      .map((row) => [row.recipe_id, row.version_id]));
+    await as("baking_recipe_runner");
+    return { versions, approvals, favorites: [] as string[] };
+  }
+  const base = async (key: string) => {
+    const fixture = JSON.parse(await readFile(new URL("../recipe-imports/examples/recipe-publish.json", import.meta.url), "utf8"));
+    const name = `Publish test ${key}`;
+    return { ...fixture, importId: crypto.randomUUID(), recipeKey: key, aliases: [], sourceKey: undefined, recipe: { ...fixture.recipe, name } };
+  };
+
+  it("publishes a finalized recipe as the preferred, bakeable version and schedules the requested date", async () => {
+    const input = await base("publish-ready");
+    await as("baking_recipe_runner");
+    const first = await submit(input);
+    expect(first).toMatchObject({ status: "published", replayed: false });
+    expect(first.eventId).toEqual(expect.any(String));
+    // Replays and regenerated IDs neither add versions nor events.
+    expect(await submit(input)).toMatchObject({ status: "published", versionId: first.versionId, eventId: first.eventId, replayed: true });
+    const again = await submit({ ...input, importId: crypto.randomUUID(), schedule: undefined });
+    expect(again).toMatchObject({ status: "already_published", recipeId: first.recipeId, versionId: first.versionId, eventId: null });
+    const lib = await library();
+    expect(lib.versions.filter((item) => item.recipe_id === first.recipeId)).toHaveLength(1);
+    expect(lib.approvals[first.recipeId]).toBe(first.versionId);
+    const preferred = activeVersions(lib).find((item) => item.recipe_id === first.recipeId)!;
+    // Untested formulas are Ready for Testing, which the Start baking picker accepts.
+    expect(preferred.document.status).toBe("Ready for Testing");
+    expect(canBake(preferred.document) && ["Ready for Testing", "Tested"].includes(preferred.document.status)).toBe(true);
+    await as("authenticated", { sub: baker });
+    const events = (await db.query<{ document: { date: string; start: string; status: string; recipes: { versionId: string; target: number }[] } }>(
+      "select document from public.planner_records where id=$1", [first.eventId])).rows;
+    expect(events[0].document).toMatchObject({ date: "2026-12-05", start: "10:00", status: "Scheduled", recipes: [{ versionId: first.versionId, target: 24 }] });
+    const receipt = (await db.query("select status, approved_version_id, event_id from public.recipe_imports where id=$1", [input.importId])).rows[0];
+    expect(receipt).toEqual({ status: "published", approved_version_id: first.versionId, event_id: first.eventId });
+  });
+
+  it("marks a version Tested only with a confirmed bake and keeps earlier versions for rollback", async () => {
+    const input = await base("publish-history");
+    await as("baking_recipe_runner");
+    const untested = await submit(input);
+    const changed = await submit({ ...input, importId: crypto.randomUUID(), tested: { testedOn: "2026-11-20" },
+      recipe: { ...input.recipe, yieldLow: 24, changeReason: "Doubled batch." } });
+    expect(changed).toMatchObject({ status: "published", recipeId: untested.recipeId });
+    let lib = await library();
+    const history = lib.versions.filter((item) => item.recipe_id === untested.recipeId);
+    expect(history.map((item) => item.document.status).sort()).toEqual(["Ready for Testing", "Tested"]);
+    expect(lib.approvals[untested.recipeId]).toBe(changed.versionId);
+    await as("authenticated", { sub: baker });
+    await db.query("update public.recipe_approvals set version_id=$1 where recipe_id=$2", [untested.versionId, untested.recipeId]);
+    lib = await library();
+    expect(lib.approvals[untested.recipeId]).toBe(untested.versionId);
+    expect(() => recipeInboxSchema.parse({ ...input, publicationIntent: undefined, tested: { testedOn: "2026-11-20" } })).toThrow();
+  });
+
+  it("keeps incomplete or inconsistent recipes as drafts and saves drafts without publishing", async () => {
+    const input = await base("publish-blocked");
+    await as("baking_recipe_runner");
+    const missing = await submit({ ...input, recipe: { ...input.recipe, ingredients: [{ ...input.recipe.ingredients[0], quantity: null }, input.recipe.ingredients[1]] } });
+    expect(missing).toMatchObject({ status: "incomplete", versionId: null });
+    expect(missing.eventId).toEqual(expect.any(String));
+    const heavy = await submit({ ...input, importId: crypto.randomUUID(), portionWeightGrams: 0.5, schedule: undefined });
+    expect(heavy).toMatchObject({ status: "incomplete", versionId: null });
+    const flagged = await submit({ ...input, importId: crypto.randomUUID(), schedule: undefined, issues: ["Dough mass does not match six portions."] });
+    expect(flagged).toMatchObject({ status: "incomplete" });
+    const draft = await submit({ ...input, importId: crypto.randomUUID(), publicationIntent: undefined, schedule: undefined });
+    expect(draft).toMatchObject({ status: "ready_for_review" });
+    const lib = await library();
+    expect(lib.approvals[draft.recipeId]).toBeUndefined();
+    expect(lib.versions.find((item) => item.id === draft.versionId)?.document.status).toBe("Draft");
+    await as("authenticated", { sub: baker });
+    const event = (await db.query<{ document: { recipes: unknown[]; notes: string } }>("select document from public.planner_records where id=$1", [missing.eventId])).rows[0];
+    expect(event.document.recipes).toEqual([]);
+    expect(event.document.notes).toContain("working draft");
+    const receipt = (await db.query<{ issues: string[] }>("select issues from public.recipe_imports where id=$1", [input.importId])).rows[0];
+    expect(receipt.issues.join(" ")).toMatch(/amount and unit/);
+  });
+
+  it("still rejects publishing calls from app users", async () => {
+    await as("authenticated", { sub: baker });
+    await expect(db.query("select baking_import.submit_recipe('{}','{}','')")).rejects.toMatchObject({ code: "42501" });
   });
 });

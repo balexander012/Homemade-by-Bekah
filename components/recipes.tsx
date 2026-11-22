@@ -87,13 +87,13 @@ export function RecipeDetail({ store, version, show, edit, back, bake }: {
     </Heading>
     {error && <p className="notice error" role="alert">{error}</p>}
     <div className="actions">
-      <Status>{approved === version.id ? "Approved" : recipe.status}</Status>
+      <Status>{recipe.status}</Status>{approved === version.id && <Status>Preferred</Status>}
       <Button tone="secondary" onClick={edit}>New revision</Button>
       <Button tone="ghost" onClick={() => void run(() => store.favorite(version.recipe_id))}>{isFavorite ? "Remove favorite" : "Favorite"}</Button>
-      {recipe.status === "Tested" && approved !== version.id && <Button tone="secondary" onClick={() => setConfirmation(true)}>Approve new version</Button>}
+      {["Tested", "Ready for Testing"].includes(recipe.status) && canBake(recipe) && approved !== version.id && <Button tone="secondary" onClick={() => setConfirmation(true)}>Make preferred version</Button>}
     </div>
-    {confirmation && <section className="panel stack"><p>Use this tested version as the preferred recipe?</p><div className="actions">
-      <Button onClick={() => void run(async () => { await store.approve(version); setConfirmation(false); })}>Confirm approval</Button>
+    {confirmation && <section className="panel stack"><p>{recipe.status === "Tested" ? "Use this tested version as the preferred recipe?" : "This version has not been tested yet. Use it as the preferred recipe for the next test bake?"}</p><div className="actions">
+      <Button onClick={() => void run(async () => { await store.approve(version); setConfirmation(false); })}>Make preferred</Button>
       <Button tone="ghost" onClick={() => setConfirmation(false)}>Cancel</Button>
     </div></section>}
     {recipe.description && <p>{recipe.description}</p>}
@@ -130,7 +130,7 @@ export function RecipeDetail({ store, version, show, edit, back, bake }: {
     </div>
     <section className="panel"><h2>Version history</h2>
       {store.library.versions.filter((item) => item.recipe_id === version.recipe_id).map((item) => <div className="row line" key={item.id}>
-        <div><strong>{item.id === approved ? "Approved" : item.document.status}</strong> · {new Date(item.created_at).toLocaleDateString("en-US")}
+        <div><strong>{item.id === approved ? `Preferred · ${item.document.status}` : item.document.status}</strong> · {new Date(item.created_at).toLocaleDateString("en-US")}
           {item.document.changeReason && <p>{item.document.changeReason}</p>}</div>
         <Button tone="ghost" disabled={item.id === version.id} onClick={() => show(item.id)}>{item.id === version.id ? "Current view" : "View version"}</Button>
       </div>)}

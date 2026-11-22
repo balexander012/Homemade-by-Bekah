@@ -25,11 +25,23 @@ export function RecipePicker({ versions, selected, onChange, empty }: { versions
   </fieldset>;
 }
 
-export function EventCard({ entry, day, versions, edit, start, showNotes = true }: {
-  entry: Entry<"event">; day: string; versions: Version[]; edit: () => void; start: () => void; showNotes?: boolean;
+export function EventCard({ entry, day, store, edit, start, showNotes = true }: {
+  entry: Entry<"event">; day: string; store: WorkspaceStore; edit: () => void; start: () => void; showNotes?: boolean;
 }) {
   const event = entry.document;
+  const { versions, approvals } = store.library;
   const recipes = eventRecipes(event, versions);
+  // Offer, never force, the newer preferred version. Saving goes through the normal revision-checked queue.
+  const newer = event.status === "Scheduled" || event.status === "Draft" ? event.recipes.flatMap((row) => {
+    const assigned = versions.find((item) => item.id === row.versionId);
+    const preferred = assigned && approvals[assigned.recipe_id];
+    return assigned && preferred && preferred !== assigned.id && !event.recipes.some((other) => other.versionId === preferred) ?
+      [{ from: row.versionId, to: preferred, name: versions.find((item) => item.id === preferred)?.document.name ?? assigned.document.name }] : [];
+  }) : [];
+  const upgrade = () => store.put("event", { ...event, recipes: event.recipes.map((row) => {
+    const change = newer.find((item) => item.from === row.versionId);
+    return change ? { ...row, versionId: change.to } : row;
+  }) }, entry.id);
   return <article className="panel stack compact event-card" style={categoryColor(event.category)}>
     <div className="line"><p className="eyebrow">{event.start ? `${event.start}${event.end ? `–${event.end}` : ""} · ${event.category}` : event.category}</p><Status>{event.status}</Status></div>
     <h3>{event.title}</h3>
@@ -38,6 +50,8 @@ export function EventCard({ entry, day, versions, edit, start, showNotes = true 
       <p className="warning">This time falls in the daylight saving clock change. Confirm a time for this date.</p>}
     {recipes.length > 0 && <ul>{recipes.map(({ version, target }) => <li key={version.id}>{version.document.name}{target ? ` · ${target} ${version.document.yieldUnit}` : ""}</li>)}</ul>}
     {showNotes && event.notes && <details className="event-notes"><summary>Notes</summary><p className="muted whitespace-pre-wrap">{event.notes}</p></details>}
+    {newer.length > 0 && <div className="notice stack compact"><p>Newer recipe version: {newer.map((item) => item.name).join(", ")}.</p>
+      <div className="actions"><Button tone="secondary" onClick={upgrade}>Use the newer version</Button></div></div>}
     <div className="actions"><Button tone="secondary" onClick={edit}>Edit event</Button>
       {event.status === "Scheduled" && <Button onClick={start}>Start baking</Button>}</div>
   </article>;
@@ -101,7 +115,7 @@ export function Calendar({ day, setDay, today, store, edit, start }: {
         </div>}
       </section>
       <section className="stack"><h2>{dateLabel(day)}</h2>
-        {upcoming(events, day, 1).map(({ entry }) => <EventCard key={entry.id} entry={entry} day={day} versions={store.library.versions} edit={() => edit(day, entry)} start={() => start(day, entry)} />)}
+        {upcoming(events, day, 1).map(({ entry }) => <EventCard key={entry.id} entry={entry} day={day} store={store} edit={() => edit(day, entry)} start={() => start(day, entry)} />)}
         {!upcoming(events, day, 1).length && <div className="panel empty-state"><p className="muted">Nothing scheduled for this date.</p>
           <Button tone="secondary" onClick={() => edit(day)}><Plus size={20} /> Add event for this day</Button></div>}
       </section>
@@ -247,7 +261,7 @@ export function Today({ today, now, store, edit, start, resume, showCalendar, sh
       })}</div></section>}
       {(scheduled.length > 0 || checklist.length > 0) && <div className={checklist.length ? "cols" : "stack"}>
         <section className="stack"><h2>Today’s schedule</h2>
-          {scheduled.length ? scheduled.map(({ entry, day }) => <EventCard key={entry.id} entry={entry} day={day} versions={versions} showNotes={false} edit={() => edit(day, entry)} start={() => start(day, entry)} />) :
+          {scheduled.length ? scheduled.map(({ entry, day }) => <EventCard key={entry.id} entry={entry} day={day} store={store} showNotes={false} edit={() => edit(day, entry)} start={() => start(day, entry)} />) :
             <p className="panel muted"><CalendarDays className="inline mr-2" size={22} /> Nothing on the calendar today.</p>}
         </section>
         {checklist.length > 0 && <section className="panel stack"><h2>Checklist</h2>
