@@ -1,9 +1,9 @@
 "use client";
 
 import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
-import { activeVersions, addDays, dateLabel, eventCategories, occurs, type Doc, type Entry, type Selection, type Version } from "@/lib/domain";
-import { eventRecipes, planTasks, upcoming } from "@/lib/plan";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { activeVersions, addDays, dateLabel, easternTimeExists, eventCategories, nextStep, occurs, timerTime, type Doc, type Entry, type Selection, type Version } from "@/lib/domain";
+import { eventRecipes, plannedBakes, planTasks, upcoming } from "@/lib/plan";
 import { recordsOf } from "@/lib/store";
 import type { WorkspaceStore } from "@/lib/use-workspace";
 import { Button, Field, Heading, Status, message } from "./ui";
@@ -34,6 +34,8 @@ export function EventCard({ entry, day, versions, edit, start }: {
     <div className="line"><p className="eyebrow">{event.start ? `${event.start}${event.end ? `–${event.end}` : ""} · ${event.category}` : event.category}</p><Status>{event.status}</Status></div>
     <h3>{event.title}</h3>
     {event.recurrence !== "None" && <p className="muted">{event.recurrence} · {dateLabel(day, { month: "short", day: "numeric" })}</p>}
+    {((event.start && !easternTimeExists(day, event.start)) || (event.end && !easternTimeExists(day, event.end))) &&
+      <p className="warning">This time falls in the daylight saving clock change. Confirm a time for this date.</p>}
     {recipes.length > 0 && <ul>{recipes.map(({ version, target }) => <li key={version.id}>{version.document.name}{target ? ` · ${target} ${version.document.yieldUnit}` : ""}</li>)}</ul>}
     {event.notes && <p className="muted whitespace-pre-wrap">{event.notes}</p>}
     <div className="actions"><Button tone="secondary" onClick={edit}>Edit event</Button>
@@ -152,8 +154,8 @@ function TaskRow({ task, store }: { task: Entry<"task">; store: WorkspaceStore }
   </div>;
 }
 
-export function Today({ today, store, edit, start, resume, showCalendar, showPhotos }: {
-  today: string; store: WorkspaceStore; edit: (date: string, event?: Entry<"event">) => void;
+export function Today({ today, now, store, edit, start, resume, showCalendar, showPhotos }: {
+  today: string; now: number; store: WorkspaceStore; edit: (date: string, event?: Entry<"event">) => void;
   start: (date: string, event?: Entry<"event">) => void; resume: (id: string) => void;
   showCalendar: (date: string) => void; showPhotos: () => void;
 }) {
@@ -167,6 +169,7 @@ export function Today({ today, store, edit, start, resume, showCalendar, showPho
   const sessions = recordsOf(records, "session");
   const active = sessions.filter(({ document }) => document.status === "Active");
   const scheduled = upcoming(events, today, 1);
+  const bakes = useMemo(() => plannedBakes(recordsOf(records, "event"), versions, recordsOf(records, "session"), today), [records, versions, today]);
   const coming = upcoming(events, addDays(today, 1), 14).slice(0, 5);
   useEffect(() => {
     let cancelled = false;
@@ -178,18 +181,26 @@ export function Today({ today, store, edit, start, resume, showCalendar, showPho
   const open = tasks.filter((row) => row.document.status !== "Dismissed");
   const marked = open.filter((row) => row.document.date === today || (row.document.date < today && row.document.status === "Open"));
   const tomorrow = open.filter((row) => row.document.date === addDays(today, 1));
+  const suggested = active[0] && nextStep(active[0].document, versions, now);
   const next = marked.find((task) => task.document.status === "Open");
   return <>
     <Heading title="Today’s Plan" detail={dateLabel(today)}><Button onClick={() => active.length ? resume(active[0].id) : start(today)}>{active.length ? "Resume baking" : "Start baking"}</Button></Heading>
     <div className="stack">
-      {active.length > 0 && <section className="stack"><h2>In the kitchen</h2><div className="tiles">{active.map((entry) => <article key={entry.id} className="panel stack">
-        <h3>{entry.document.title}</h3><p className="muted">{entry.document.recipes.length} batches · {entry.document.mode}</p>
-        <Button tone="secondary" onClick={() => resume(entry.id)}>Resume session</Button>
-      </article>)}</div></section>}
+      {active.length > 0 && <section className="stack"><h2>In the kitchen</h2><div className="tiles">{active.map((entry) => {
+        const timers = entry.document.timers.filter((timer) => !timer.cancelled).sort((a, b) => a.deadline - b.deadline);
+        const first = timers[0];
+        return <article key={entry.id} className={`panel stack ${first && first.deadline <= now ? "timer-alert" : ""}`}>
+          <h3>{entry.document.title}</h3><p className="muted">{entry.document.recipes.length} batches · {entry.document.mode}</p>
+          {first && <><p className="timer">{first.deadline <= now ? "+" : ""}{timerTime(first.deadline - now)}</p>
+            <p>{first.deadline <= now ? "Overdue" : "Timer running"} · {first.label}</p></>}
+          <Button tone="secondary" onClick={() => resume(entry.id)}>Resume session</Button>
+        </article>;
+      })}</div></section>}
       <div className="cols">
         <div className="stack">
           <section className="panel tinted stack"><h2>Up next</h2>
-            {active.length ? <p>Pick up where you left off in {active[0].document.title}.</p> :
+            {suggested ? <><p className="eyebrow">{suggested.version.document.name}</p><p className="line-clamp-3">{suggested.step.instruction}</p></> :
+              active.length ? <p>Pick up where you left off in {active[0].document.title}.</p> :
               next ? <p>{next.document.title}</p> :
               scheduled.length ? <p>{scheduled[0].entry.document.title}</p> :
               <><p>Your baking schedule is open today.</p><Button tone="secondary" onClick={() => edit(today)}>Plan a bake</Button></>}
@@ -213,7 +224,21 @@ export function Today({ today, store, edit, start, resume, showCalendar, showPho
             {["Preparation", "Baking", "Photography", "Wrap Up"].map((name) => <div key={name}><h3>{name}</h3>
               {marked.filter((task) => task.document.section === name).map((task) => <TaskRow key={task.id} store={store} task={task} />)}
               {!marked.some((task) => task.document.section === name) && <p className="muted">Nothing to check off.</p>}
-              {name === "Photography" && <Button tone="ghost" onClick={showPhotos}>Open photo queue</Button>}
+              {name === "Preparation" && (bakes.ingredients.length > 0 || bakes.equipment.length > 0) && <details className="row">
+                <summary>Ingredients and equipment</summary><div className="stack compact">
+                  {bakes.ingredients.map((item) => <p key={item.key}><strong>{item.amount}</strong> · {item.name}{item.preparation ? ` · ${item.preparation}` : ""}</p>)}
+                  {bakes.equipment.length > 0 && <p>Set out {bakes.equipment.join(", ")}.</p>}
+                </div>
+              </details>}
+              {name === "Baking" && bakes.recipes.map((item) => <div className="row" key={`${item.eventId}:${item.versionId}`}>
+                <p><strong>{item.name}</strong>{item.target ?? item.originalYield ? ` · ${item.target ?? item.originalYield} ${item.yieldUnit}` : ""}</p>
+                {item.oven.length > 0 && <p className="muted">Oven · {item.oven.map((temperature) => `${temperature} °F`).join(", ")}</p>}
+                {item.previousNote && <p className="muted">From last time · {item.previousNote}</p>}
+              </div>)}
+              {name === "Photography" && <>
+                {bakes.recipes.filter((item) => item.photo).map((item) => <p key={`${item.eventId}:${item.versionId}`}>{item.name}</p>)}
+                <Button tone="ghost" onClick={showPhotos}>Open photo queue</Button>
+              </>}
             </div>)}
           </section>
           <section className="panel stack"><h2>Prepare for tomorrow</h2>

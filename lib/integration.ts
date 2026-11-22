@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { activeVersions, addDays, canBake, date, easternDate, eventSchema, feedbackSchema, ideaSchema, modes, recipeSchema, selectionSchema, taskSchema, uuid } from "./domain";
-import { planTasks, upcoming } from "./plan";
+import { plannedBakes, planTasks, upcoming } from "./plan";
 import { ConflictError, loadWorkspace, recordsOf, saveRecord, saveVersion, supabaseUrl, tokenClient } from "./store";
 
 export class IntegrationError extends Error {
@@ -102,15 +102,15 @@ async function run(client: SupabaseClient, workspaceId: string, name: Operation,
     }
     case "get_recipe": return find(library.versions, (input as Input<"get_recipe">).id);
     case "get_recipe_versions": return library.versions.filter((item) => item.recipe_id === (input as Input<"get_recipe_versions">).id);
-    case "list_recipe_ideas": return recordsOf(records, "idea");
+    case "list_recipe_ideas": return recordsOf(records, "idea").map((entry) => ({ ...entry, document: { ...entry.document, image: undefined } }));
     case "get_calendar_events": return upcoming(events, from, days);
     case "get_todays_plan": return {
-      date: from, events: upcoming(events, from, 1), tasks: (await planTasks(events, tasks, library.versions, from, 2)).filter((item) => item.document.status !== "Dismissed"),
+      date: from, events: upcoming(events, from, 1), baking: plannedBakes(events, library.versions, sessions, from), tasks: (await planTasks(events, tasks, library.versions, from, 2)).filter((item) => item.document.status !== "Dismissed"),
       active: sessions.filter((item) => item.document.status === "Active"),
     };
     case "get_upcoming_sessions": return sessions.filter(({ document }) => document.date >= from && document.date < addDays(from, days));
     case "get_session_status": return find(sessions, (input as Input<"get_session_status">).id);
-    case "get_preparation_tasks": return (await planTasks(events, tasks, library.versions, from, days)).filter((item) => item.document.section === "Preparation" && item.document.status !== "Dismissed");
+    case "get_preparation_tasks": return (await planTasks(events, tasks, library.versions, from, days)).filter((item) => item.document.date >= from && item.document.section === "Preparation" && item.document.status !== "Dismissed");
     case "create_recipe_draft":
     case "update_recipe_draft": {
       const { id, recipeId, recipe } = input as Input<"create_recipe_draft">;
@@ -124,7 +124,7 @@ async function run(client: SupabaseClient, workspaceId: string, name: Operation,
     }
     case "create_recipe_idea": {
       const { id, idea } = input as Input<"create_recipe_idea">;
-      return saveRecord(client, workspaceId, { id, kind: "idea", document: idea, revision: 0 }, null);
+      return saveRecord(client, workspaceId, { id, kind: "idea", document: { ...idea, image: undefined }, revision: 0 }, null);
     }
     case "schedule_baking_session":
     case "update_calendar_event": {

@@ -3,12 +3,12 @@ import { easternDate, addDays } from "../../lib/domain";
 
 const navigation = (page: Page, label: string) => page.getByRole("navigation").getByRole("button", { name: label, exact: true });
 
-async function createRecipe(page: Page, name: string) {
+async function createRecipe(page: Page, name: string, status = "Ready for Testing") {
   await navigation(page, "Recipes").click();
   await page.getByRole("button", { name: "New recipe" }).click();
   await page.getByLabel("Recipe name").fill(name);
   await page.getByLabel("Original yield", { exact: true }).fill("24");
-  await page.getByRole("combobox", { name: "Status", exact: true }).selectOption("Ready for Testing");
+  await page.getByRole("combobox", { name: "Status", exact: true }).selectOption(status);
   await page.getByRole("button", { name: "Add ingredient" }).click();
   await page.getByLabel("Ingredient name").fill("Unsalted butter");
   await page.getByLabel("Quantity", { exact: true }).fill("240");
@@ -79,4 +79,21 @@ test("uses real brand assets, persists theme and keeps the viewport free of hori
   await page.getByRole("combobox", { name: "Kitchen theme", exact: true }).selectOption("dark");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+});
+
+test("keeps an approved recipe while a new draft is being developed", async ({ page }) => {
+  await page.goto("/");
+  await createRecipe(page, "Test espresso cookies", "Tested");
+  await page.getByRole("button", { name: "Approve new version" }).click();
+  await page.getByRole("button", { name: "Confirm approval" }).click();
+  await expect(page.getByText("Approved", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: "New revision" }).click();
+  await page.getByLabel("Recipe name").fill("Test espresso cookies revision");
+  await page.getByLabel("Reason for revision").fill("Try real brewed espresso.");
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await expect(page.getByRole("heading", { name: "Test espresso cookies revision", exact: true })).toBeVisible();
+  await expect(page.getByText("Try real brewed espresso.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "All recipes" }).click();
+  await expect(page.getByRole("heading", { name: "Test espresso cookies", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Test espresso cookies revision", exact: true })).toHaveCount(0);
 });

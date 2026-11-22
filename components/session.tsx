@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Timer, Volume2 } from "lucide-react";
-import { activeVersions, canBake, currentSteps, formatAmount, modes, newSession, nextStep, scale, sharedIngredients, type Entry, type Selection, type Session, type Version } from "@/lib/domain";
+import { activeVersions, canBake, currentSteps, formatAmount, modes, newSession, nextStep, ovenBlocked, scale, sharedIngredients, timerTime, type Entry, type Selection, type Session, type Version } from "@/lib/domain";
 import type { WorkspaceStore } from "@/lib/use-workspace";
+import { taskId } from "@/lib/plan";
 import { RecipePicker } from "./planner";
 import { Button, Field, Heading, Status, message } from "./ui";
 
@@ -15,15 +16,21 @@ export function StartSession({ date, event, initialVersion, store, close, starte
   const valid = (version: Version) => canBake(version.document) && ["Ready for Testing", "Tested"].includes(version.document.status);
   const [selection, setSelection] = useState<Selection[]>(() => (event?.document.recipes ??
     (initialVersion ? [{ versionId: initialVersion, target: null }] : [])).filter((row) => all.some((version) => row.versionId === version.id && valid(version))));
+  const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState(event?.document.title ?? "Baking session");
   const [mode, setMode] = useState<Session["mode"]>("Sequential");
   const [error, setError] = useState("");
   const versions = [...activeVersions(store.library), ...all.filter((item) =>
     selection.some((row) => row.versionId === item.id) && !activeVersions(store.library).some((version) => version.id === item.id))].filter(valid);
   const skipped = event?.document.recipes.filter((row) => !all.some((item) => row.versionId === item.id && valid(item))) ?? [];
-  return <><Heading title="Start baking" /><form className="stack" onSubmit={(e) => {
+  return <><Heading title="Start baking" /><form className="stack" onSubmit={async (e) => {
     e.preventDefault();
-    try { started(store.put("session", { ...newSession(title, date, selection, event?.id), mode })); } catch (cause) { setError(message(cause)); }
+    if (busy) return;
+    setBusy(true);
+    try {
+      const id = event ? await taskId(`session:${event.id}:${date}`) : undefined;
+      started(store.put("session", { ...newSession(title, date, selection, event?.id), mode }, id, true));
+    } catch (cause) { setError(message(cause)); setBusy(false); }
   }}>
     <section className="panel stack">
       <Field label="Session name"><input required value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
@@ -33,14 +40,8 @@ export function StartSession({ date, event, initialVersion, store, close, starte
       <RecipePicker versions={versions} selected={selection} onChange={setSelection} />
     </section>
     {error && <p className="notice error" role="alert">{error}</p>}
-    <div className="actions"><Button type="submit" disabled={!selection.length}>Begin session</Button><Button tone="ghost" onClick={close}>Cancel</Button></div>
+    <div className="actions"><Button type="submit" disabled={busy || !selection.length}>Begin session</Button><Button tone="ghost" onClick={close}>Cancel</Button></div>
   </form></>;
-}
-
-function timeText(ms: number) {
-  const seconds = Math.ceil(Math.abs(ms) / 1000);
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes.toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
 }
 
 export function BakingSession({ entry, store, now, photos, sound, audioReady }: {
@@ -48,12 +49,11 @@ export function BakingSession({ entry, store, now, photos, sound, audioReady }: 
 }) {
   const session = entry.document;
   const versions = store.library.versions;
-  const [override, setOverride] = useState("");
   const [timerMinutes, setTimerMinutes] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const recipeSteps = currentSteps(session, versions, now);
   const suggested = nextStep(session, versions, now);
-  const focused = recipeSteps.find((item) => item.version.id === override) ?? suggested;
+  const focused = recipeSteps.find((item) => item.version.id === session.focusVersionId) ?? suggested;
   const visible = session.mode === "Side-by-Side" ? recipeSteps.slice(0, 3) : focused ? [focused] : [];
   const active = session.status === "Active";
   const allDone = session.recipes.every((recipe) => {
@@ -108,10 +108,10 @@ export function BakingSession({ entry, store, now, photos, sound, audioReady }: 
       {error && <p className="notice error" role="alert">{error}</p>}
       {active && expired.length > 0 && <p role="status" className="notice error">Timer ready · {expired.map((timer) => timer.label).join(", ")}. Check the bake and mark the step when it’s done.</p>}
       <div className="actions">
-        <Field label="Baking mode"><select disabled={!active} value={session.mode} onChange={(e) => { setOverride(""); save({ mode: e.target.value as Session["mode"] }); }}>
+        <Field label="Baking mode"><select disabled={!active} value={session.mode} onChange={(e) => save({ mode: e.target.value as Session["mode"] })}>
           {modes.map((name) => <option key={name}>{name}</option>)}</select></Field>
         {active && recipeSteps.length > 1 && session.mode !== "Side-by-Side" && <Field label="Focus recipe">
-          <select value={override} onChange={(e) => setOverride(e.target.value)}><option value="">Suggested order</option>
+          <select value={focused?.version.id === session.focusVersionId ? session.focusVersionId : ""} onChange={(e) => save({ focusVersionId: e.target.value || undefined })}><option value="">Suggested order</option>
             {recipeSteps.map((item) => <option key={item.version.id} value={item.version.id}>{item.version.document.name}</option>)}</select>
         </Field>}
         {active && <Button tone="ghost" onClick={sound}>{audioReady ? "Timer sound on" : "Enable timer sound"}</Button>}
@@ -133,9 +133,7 @@ export function BakingSession({ entry, store, now, photos, sound, audioReady }: 
         <div className={visible.length > 1 ? "tiles" : "stack"}>{visible.map(({ version, progress, step, waiting, timer }) => {
           const recipe = version.document;
           const index = recipe.steps.indexOf(step);
-          const otherOven = recipeSteps.find((item) => item.waiting && item.step.kind === "Oven" && item.version.id !== version.id);
-          const blocked = step.kind === "Oven" && (otherOven || session.oven.phase === "Occupied" ||
-            (session.oven.phase === "Preheating" && session.oven.temperature !== step.temperature));
+          const blocked = ovenBlocked(session, recipeSteps, { version, progress, step, waiting, timer });
           const stepKey = `${version.id}:${step.id}`;
           return <article className="panel stack" key={version.id}>
             <div className="line"><p className="eyebrow">Step {index + 1} of {recipe.steps.length}</p><Status>{waiting ? "Timer running" : step.kind}</Status></div>
@@ -154,7 +152,7 @@ export function BakingSession({ entry, store, now, photos, sound, audioReady }: 
                 onChange={(e) => setTimerMinutes({ ...timerMinutes, [stepKey]: e.target.value })} /></Field>
               <Button tone="secondary" disabled={Boolean(blocked)} onClick={() => startTimer(version.id, step.id, `${recipe.name} · Step ${index + 1}`, Number(timerMinutes[stepKey] ?? step.minutes))}><Timer size={20} /> Start timer</Button>
             </div>}
-            {waiting && timer && <p className="timer">{timeText(timer.deadline - now)}</p>}
+            {waiting && timer && <p className="timer">{timerTime(timer.deadline - now)}</p>}
             <div className="actions">
               {"speechSynthesis" in window && <Button tone="ghost" onClick={() => {
                 window.speechSynthesis.cancel();
@@ -164,8 +162,7 @@ export function BakingSession({ entry, store, now, photos, sound, audioReady }: 
               }}><Volume2 size={20} /> Read step</Button>}
               {active && <Button onClick={() => {
                 save({ recipes: session.recipes.map((item) => item.versionId === version.id ? { ...item, completed: [...item.completed, step.id] } : item),
-                  timers: session.timers.map((item) => item.versionId === version.id && item.stepId === step.id ? { ...item, cancelled: true } : item) });
-                setOverride("");
+                  timers: session.timers.map((item) => item.versionId === version.id && item.stepId === step.id ? { ...item, cancelled: true } : item), focusVersionId: undefined });
               }}>Complete step</Button>}
             </div>
           </article>;
@@ -180,8 +177,8 @@ export function BakingSession({ entry, store, now, photos, sound, audioReady }: 
         })}
       </section>
       {timers.length > 0 && <section className="stack"><h2>Timers</h2><div className="tiles">{timers.map((timer) => <article className={`panel stack ${timer.deadline <= now ? "timer-alert" : ""}`} key={timer.id}>
-        <h3>{timer.label}</h3><p className="timer">{timer.deadline <= now ? "+" : ""}{timeText(timer.deadline - now)}</p>
-        <p className="muted">{timer.deadline <= now ? "Overdue" : "Remaining"} · {timeText(Math.max(0, now - timer.start))} elapsed</p>
+        <h3>{timer.label}</h3><p className="timer">{timer.deadline <= now ? "+" : ""}{timerTime(timer.deadline - now)}</p>
+        <p className="muted">{timer.deadline <= now ? "Overdue" : "Remaining"} · {timerTime(Math.max(0, now - timer.start))} elapsed</p>
         {active && <div className="actions"><Button tone="secondary" onClick={() => save({ timers: session.timers.map((row) => row.id === timer.id ? { ...row, deadline: row.deadline + 60000 } : row) })}>Add 1 minute</Button>
           <Button tone="ghost" onClick={() => save({ timers: session.timers.map((row) => row.id === timer.id ? { ...row, cancelled: true } : row) })}>{timer.deadline <= now ? "Dismiss timer" : "Cancel timer"}</Button></div>}
       </article>)}</div><p className="muted">Timer sound plays while the app is open. Return to the app to see elapsed time after a lock or reload.</p></section>}

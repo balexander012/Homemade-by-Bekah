@@ -46,7 +46,7 @@ export const recipeSchema = z.object({
     context.addIssue({ code: "custom", message: "Ingredient and step IDs must be unique and step ingredients must exist." });
   }
   if (["Ready for Testing", "Tested"].includes(value.status) && !canBake(value)) {
-    context.addIssue({ code: "custom", message: "Confirm yield, ingredients, instructions, and oven temperatures before testing." });
+    context.addIssue({ code: "custom", message: "Confirm the yield, quantities, instructions, and oven temperatures. Assign each ingredient to its step before testing." });
   }
 });
 
@@ -64,7 +64,7 @@ export const eventSchema = z.object({
 { message: "Check the event times in New York, preparation deadline, recurrence end date and recipe selections." });
 export const ideaSchema = z.object({
   name: short, description: notes, category: short, link: z.union([z.literal(""), z.url({ protocol: /^https?$/ })]),
-  notes, priority: z.enum(["Low", "Normal", "High"]), status: z.enum(ideaStatuses), target: date.optional(),
+  notes, priority: z.enum(["Low", "Normal", "High"]), status: z.enum(ideaStatuses), target: date.optional(), image: z.string().max(400).optional(),
 });
 export const taskSchema = z.object({
   title: short, date, status: z.enum(["Open", "Done", "Dismissed"]),
@@ -81,10 +81,10 @@ export const feedbackSchema = z.object({
   notes, worked: notes, change: notes, again: z.enum(["", "Yes", "No"]),
 });
 export const sessionSchema = z.object({
-  title: short, date, eventId: uuid.optional(), mode: z.enum(modes), status: z.enum(["Active", "Completed"]),
+  title: short, date, eventId: uuid.optional(), focusVersionId: uuid.optional(), mode: z.enum(modes), status: z.enum(["Active", "Completed"]),
   recipes: z.array(selectionSchema.extend({ completed: z.array(uuid).max(100) })).min(1).max(20),
   timers: z.array(timerSchema).max(300), prepared: z.array(z.string().max(1000)).max(3000),
-  feedback: z.record(uuid, feedbackSchema), shots: z.record(uuid, z.record(z.string().max(200), z.enum(shotStatuses))),
+  feedback: z.record(uuid, feedbackSchema), heroPhotos: z.record(uuid, uuid).optional(), shots: z.record(uuid, z.record(z.string().max(200), z.enum(shotStatuses))),
   oven: z.object({ phase: z.enum(["Available", "Preheating", "Occupied"]), temperature: z.number().int().min(75).max(650).optional(), notes }),
 }).refine((session) => new Set(session.recipes.map((recipe) => recipe.versionId)).size === session.recipes.length, "Select each version once.");
 export const photoSchema = z.object({
@@ -92,9 +92,12 @@ export const photoSchema = z.object({
   use: z.enum(["Website", "Instagram", "Facebook", "TikTok", "Product catalog", "Packaging"]),
   status: z.enum(shotStatuses), hero: z.boolean(),
 });
+export const referenceSchema = z.object({
+  title: short, notes, path: z.string().min(1).max(400), versionId: uuid.optional(),
+});
 export const policySchema = z.object({ title: short, pattern: z.string().trim().min(2).max(200), enabled: z.boolean() });
 
-export const schemas = { event: eventSchema, idea: ideaSchema, task: taskSchema, session: sessionSchema, photo: photoSchema, policy: policySchema };
+export const schemas = { event: eventSchema, idea: ideaSchema, task: taskSchema, session: sessionSchema, photo: photoSchema, policy: policySchema, reference: referenceSchema };
 export type Kind = keyof typeof schemas;
 export type Doc<K extends Kind> = z.infer<(typeof schemas)[K]>;
 export type Entry<K extends Kind = Kind> = { id: string; kind: K; revision: number; document: Doc<K> };
@@ -133,14 +136,15 @@ export function occurs(event: Doc<"event">, day: string): boolean {
 
 export function canBake(recipe: Pick<Recipe, "yieldLow" | "ingredients" | "steps">): boolean {
   return Boolean(recipe.yieldLow && recipe.ingredients.length && recipe.steps.length &&
-    recipe.ingredients.every((ingredient) => ingredient.quantity !== null) &&
+    recipe.ingredients.every((ingredient) => ingredient.quantity !== null && recipe.steps.some((step) => step.ingredients.includes(ingredient.id))) &&
     recipe.steps.every((step) => step.kind !== "Oven" || step.temperature !== undefined));
 }
 
 export function activeVersions(library: Library) {
   const latest = new Map<string, Version>();
   for (const version of library.versions) if (!latest.has(version.recipe_id)) latest.set(version.recipe_id, version);
-  return [...latest.values()].map((version) => library.versions.find((item) => item.id === library.approvals[version.recipe_id]) ?? version);
+  return [...latest.values()].map((version) => version.document.status === "Archived" ? version :
+    library.versions.find((item) => item.id === library.approvals[version.recipe_id]) ?? version);
 }
 
 export function scale(ingredient: Ingredient, recipe: Pick<Recipe, "yieldLow" | "yieldHigh">, target: number | null) {
@@ -199,6 +203,12 @@ export function sharedIngredients(selections: Selection[], versions: Version[]) 
   });
 }
 
+export function timerTime(ms: number) {
+  const seconds = Math.ceil(Math.abs(ms) / 1000);
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes.toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
+}
+
 export function currentSteps(session: Session, versions: Version[], now: number) {
   return session.recipes.flatMap((progress) => {
     const version = versions.find((item) => item.id === progress.versionId);
@@ -209,13 +219,21 @@ export function currentSteps(session: Session, versions: Version[], now: number)
   });
 }
 
+type CurrentStep = ReturnType<typeof currentSteps>[number];
+
+export function ovenBlocked(session: Session, rows: CurrentStep[], row: CurrentStep): boolean {
+  if (row.step.kind !== "Oven") return false;
+  const differentBatchInOven = rows.some((item) => item.version.id !== row.version.id && item.step.kind === "Oven" && item.timer);
+  return differentBatchInOven ||
+    (session.oven.phase === "Occupied" && !row.timer) ||
+    (session.oven.phase === "Preheating" && session.oven.temperature !== row.step.temperature);
+}
+
 export function nextStep(session: Session, versions: Version[], now: number) {
   const steps = currentSteps(session, versions, now);
   if (session.mode !== "Smart Baking") return steps[0];
-  const activeOven = steps.find((row) => row.step.kind === "Oven" && row.waiting);
-  return steps.find((row) => !row.waiting && (row.step.kind !== "Oven" ||
-    (session.oven.phase !== "Occupied" && !activeOven &&
-      (session.oven.phase !== "Preheating" || session.oven.temperature === row.step.temperature)))) ?? steps[0];
+  const timedOut = steps.find((row) => row.timer && !row.waiting);
+  return timedOut ?? steps.find((row) => !row.waiting && !ovenBlocked(session, steps, row)) ?? steps[0];
 }
 
 export function shotsFor(recipe: Recipe) {

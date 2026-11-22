@@ -19,6 +19,7 @@ Open [localhost:3000](http://localhost:3000). Fill in the two Supabase variables
 - [Deployment, user provisioning, and iPad installation](docs/deployment.md)
 - [ChatGPT OAuth and authenticated fallback API](docs/integration.md)
 - [Development and architecture](AGENTS.md)
+- [Verification and release acceptance](docs/verification.md)
 
 ## Verify changes
 

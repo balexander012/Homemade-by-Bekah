@@ -43,3 +43,13 @@ self.addEventListener("fetch", (event) => {
     return response;
   })());
 });
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const kitchen = windows.find((client) => new URL(client.url).pathname === "/");
+    if (kitchen) await kitchen.focus();
+    else await self.clients.openWindow("/");
+  })());
+});

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { BookOpen, CalendarDays, Camera, Ellipsis, LayoutDashboard } from "lucide-react";
 import type { Session as AuthSession, SupabaseClient } from "@supabase/supabase-js";
 import { easternDate, type Entry } from "@/lib/domain";
-import { browserClient, recordsOf } from "@/lib/store";
+import { authStorageKey, browserClient, recordsOf } from "@/lib/store";
 import { useWorkspace } from "@/lib/use-workspace";
 import { Brand, Button, Field, message } from "./ui";
 import { Recipes, RecipeDetail, RecipeEditor } from "./recipes";
@@ -36,11 +36,24 @@ export function BakingApp() {
   const [workspaceId, setWorkspaceId] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const userId = session?.user.id;
+  const [offlineIdentity, setOfflineIdentity] = useState<string>();
+  const [online, setOnline] = useState(true);
+  const userId = session?.user.id ?? (!online ? offlineIdentity : undefined);
 
   useEffect(() => {
     setClient(browserClient());
     setHydrated(true);
+    const status = () => {
+      setOnline(navigator.onLine);
+      try {
+        const stored = JSON.parse(localStorage.getItem(authStorageKey) ?? "null");
+        setOfflineIdentity(typeof stored?.user?.id === "string" && localStorage.getItem(`bekah-memberships:${stored.user.id}`) ? stored.user.id : undefined);
+      } catch { setOfflineIdentity(undefined); }
+    };
+    status();
+    window.addEventListener("online", status);
+    window.addEventListener("offline", status);
+    return () => { window.removeEventListener("online", status); window.removeEventListener("offline", status); };
   }, []);
 
   useEffect(() => {
@@ -48,7 +61,15 @@ export function BakingApp() {
       void navigator.serviceWorker.register("/sw.js").catch(() => { /* The online app can run without a worker. */ });
     }
     if (!client) return;
-    const { data } = client.auth.onAuthStateChange((_event, auth) => { setSession(auth); setBooting(false); });
+    const { data } = client.auth.onAuthStateChange((event, auth) => {
+      if (event === "SIGNED_OUT") {
+        setOfflineIdentity(undefined);
+        setWorkspaces(undefined);
+        setWorkspaceId("");
+      }
+      setSession(auth);
+      setBooting(false);
+    });
     return () => data.subscription.unsubscribe();
   }, [client]);
 
@@ -90,25 +111,32 @@ export function BakingApp() {
 
   async function signOut() {
     if (!client || !userId) return;
+    setOfflineIdentity(undefined);
+    setWorkspaces(undefined);
+    setWorkspaceId("");
+    setSession(null);
     try { await client.auth.signOut({ scope: "local" }); }
     finally {
-      for (const key of Object.keys(localStorage)) if (key.startsWith(`bekah-v1:${userId}:`) || key === `bekah-memberships:${userId}`) localStorage.removeItem(key);
-      setWorkspaces(undefined);
-      setWorkspaceId("");
-      setSession(null);
+      try {
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith(`bekah-v1:${userId}:`) || key === `bekah-memberships:${userId}` || key === authStorageKey || key.startsWith(`${authStorageKey}-`)) {
+            localStorage.removeItem(key);
+          }
+        }
+      } catch { setError("Device storage could not be cleared. Close this tab and clear site data on a shared device."); }
     }
   }
 
   if (hydrated && !client && demoEnabled) return <Workspace client={null} workspace={demoWorkspace} identity="demo" signOut={() => {}} />;
   const selected = workspaces?.find((workspace) => workspace.id === workspaceId) ?? (workspaces?.length === 1 ? workspaces[0] : undefined);
-  if (session && selected && client) return <Workspace key={`${session.user.id}:${selected.id}`} client={client}
-    workspace={selected.id} identity={session.user.id} signOut={() => void signOut()} />;
+  if (userId && selected && client) return <Workspace key={`${userId}:${selected.id}`} client={client}
+    workspace={selected.id} identity={userId} signOut={() => void signOut()} />;
   return <main className="signin"><section className="panel stack">
     <Brand />
-    {!hydrated || (client && booting) || (session && !workspaces) ? <p role="status">Opening your kitchen…</p> :
-      session && workspaces?.length ? <><h1>Choose a kitchen</h1>{workspaces.map((workspace) =>
+    {!hydrated || (client && booting && online) || (userId && !workspaces) ? <p role="status">Opening your kitchen…</p> :
+      userId && workspaces?.length ? <><h1>Choose a kitchen</h1>{workspaces.map((workspace) =>
         <Button onClick={() => setWorkspaceId(workspace.id)} key={workspace.id}>{workspace.name}</Button>)}</> :
-      session ? <><h1>Workspace access</h1><p>Your account needs an invitation to this baking workspace.</p><Button onClick={() => void signOut()}>Sign out</Button></> :
+      userId ? <><h1>Workspace access</h1><p>Your account needs an invitation to this baking workspace.</p><Button onClick={() => void signOut()}>Sign out</Button></> :
       client ? <><h1>Sign in</h1><form onSubmit={login} className="stack">
         <Field label="Email"><input type="email" name="email" required autoComplete="username" /></Field>
         <Field label="Password"><input type="password" name="password" required autoComplete="current-password" /></Field>
@@ -127,12 +155,20 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
   const today = easternDate(new Date(now));
   const [day, setDay] = useState(today);
   const [theme, setTheme] = useState<Theme>(() => {
-    const theme = localStorage.getItem("bekah-theme");
-    return theme === "light" || theme === "dark" ? theme : "system";
+    try {
+      const theme = localStorage.getItem("bekah-theme");
+      return theme === "light" || theme === "dark" ? theme : "system";
+    } catch { return "system"; }
   });
   const [audioReady, setAudioReady] = useState(false);
+  const [alerts, setAlerts] = useState(() => {
+    try { return localStorage.getItem("bekah-timer-alerts") === "on" && "Notification" in window && Notification.permission === "granted"; }
+    catch { return false; }
+  });
+  const [alertMessage, setAlertMessage] = useState("");
   const audio = useRef<AudioContext | null>(null);
   const played = useRef(new Set<string>());
+  const notified = useRef(new Set<string>());
   const detailId = detail && "id" in detail ? detail.id : undefined;
   const event = detail?.screen === "start" || detail?.screen === "event" ?
     recordsOf(store.records, "event").find((item) => item.id === (detail.screen === "start" ? detail.eventId : detail.id)) : undefined;
@@ -175,13 +211,47 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
     oscillator.stop(ctx.currentTime + 1);
   }, [audioReady, now, store.records]);
 
+  useEffect(() => {
+    if (!alerts || !("serviceWorker" in navigator) || !("Notification" in window) || Notification.permission !== "granted") return;
+    const done = recordsOf(store.records, "session").filter((entry) => entry.document.status === "Active")
+      .flatMap((entry) => entry.document.timers)
+      .filter((timer) => !timer.cancelled && timer.deadline <= now && !notified.current.has(`${timer.id}:${timer.deadline}`));
+    for (const timer of done) {
+      const tag = `${timer.id}:${timer.deadline}`;
+      notified.current.add(tag);
+      // Keep labels private on the lock screen. The app shows the matching batch.
+      void navigator.serviceWorker.getRegistration().then((worker) =>
+        worker?.showNotification("Baking timer ready", { body: "Open Homemade by Bekah to check the bake.", tag, icon: "/icon-192.png" })).catch(() => {});
+    }
+  }, [alerts, now, store.records]);
+
+  async function toggleAlerts() {
+    setAlertMessage("");
+    if (alerts) {
+      setAlerts(false);
+      localStorage.removeItem("bekah-timer-alerts");
+      return;
+    }
+    try {
+      if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+        setAlertMessage("This browser does not offer timer notifications here. The timer and sound are available in the open app.");
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") { setAlertMessage("Timer notification permission was not granted."); return; }
+      if (!await navigator.serviceWorker.getRegistration()) { setAlertMessage("Timer notifications need the installable app. Timer sound is available in this tab."); return; }
+      setAlerts(true);
+      localStorage.setItem("bekah-timer-alerts", "on");
+    } catch { setAlertMessage("Could not enable timer notifications on this device."); }
+  }
+
   const open = (next: Tab) => { setTab(next); setDetail(undefined); };
   const edit = (date: string, event?: Entry<"event">) => setDetail({ screen: "event", date, id: event?.id });
   const resume = (id: string) => {
     setDetail({ screen: "session", id });
   };
   const start = (date: string, planned?: Entry<"event">) => {
-    const existing = planned && sessions.find((session) => session.document.eventId === planned.id && session.document.date === date && session.document.status === "Active");
+    const existing = planned && sessions.find((session) => session.document.eventId === planned.id && session.document.date === date);
     if (existing) resume(existing.id);
     else setDetail({ screen: "start", date, eventId: planned?.id });
   };
@@ -198,11 +268,11 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
     if (detail?.screen === "start") return <StartSession date={detail.date} event={event} initialVersion={detail.versionId} store={store} close={() => setDetail(undefined)} started={resume} />;
     if (detail?.screen === "session" && active) return <BakingSession key={active.id} entry={active} store={store} now={now} photos={() => open("Photos")} audioReady={audioReady} sound={prepareAudio} />;
     switch (tab) {
-      case "Today": return <Today today={today} store={store} edit={edit} start={start} resume={resume} showCalendar={(date) => { setDay(date); open("Calendar"); }} showPhotos={() => open("Photos")} />;
+      case "Today": return <Today today={today} now={now} store={store} edit={edit} start={start} resume={resume} showCalendar={(date) => { setDay(date); open("Calendar"); }} showPhotos={() => open("Photos")} />;
       case "Calendar": return <Calendar day={day} setDay={setDay} today={today} store={store} edit={edit} start={start} />;
       case "Recipes": return <Recipes store={store} show={(id) => setDetail({ screen: "recipe", id })} edit={() => setDetail({ screen: "recipe-form" })} />;
       case "Photos": return <Photos store={store} client={client} workspace={workspace} />;
-      case "More": return <More store={store} theme={theme} setTheme={setTheme} signOut={signOut} demo={demo} resume={resume}
+      case "More": return <More store={store} client={client} workspace={workspace} theme={theme} setTheme={setTheme} alerts={alerts} alertMessage={alertMessage} toggleAlerts={() => void toggleAlerts()} signOut={signOut} demo={demo} resume={resume}
         createRecipe={(name) => setDetail({ screen: "recipe-form", name })}
         schedule={(title, date) => setDetail({ screen: "event", title, date: date ?? today })} />;
     }

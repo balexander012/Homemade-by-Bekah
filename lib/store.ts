@@ -1,12 +1,13 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { schemas, recipeSchema, canBake, type Doc, type Entry, type Kind, type Library, type Recipe } from "./domain";
 
+export const authStorageKey = "bekah-auth";
 export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 export const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 export function browserClient() {
   if (!supabaseUrl || !publishableKey) return null;
-  return createClient(supabaseUrl, publishableKey);
+  return createClient(supabaseUrl, publishableKey, { auth: { storageKey: authStorageKey } });
 }
 
 export function tokenClient(token: string) {
@@ -24,22 +25,31 @@ export function recordsOf<K extends Kind>(records: Entry[], kind: K): Entry<K>[]
   return records.filter((entry): entry is Entry<K> => entry.kind === kind);
 }
 
+async function pages<T>(select: (start: number, end: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>) {
+  const pageSize = 250;
+  const rows: T[] = [];
+  for (let start = 0; ; start += pageSize) {
+    const { data, error } = await select(start, start + pageSize - 1);
+    if (error) throw new Error(error.message);
+    if (data) rows.push(...data);
+    if (!data || data.length < pageSize) return rows;
+  }
+}
+
 export async function loadWorkspace(client: SupabaseClient, workspace: string) {
   const [records, versions, approvals, recipes] = await Promise.all([
-    client.from("planner_records").select("id,kind,revision,document").eq("workspace_id", workspace).order("id"),
-    client.from("recipe_versions").select("id,recipe_id,created_at,document").eq("workspace_id", workspace).order("created_at", { ascending: false }).order("id"),
-    client.from("recipe_approvals").select("recipe_id,version_id").eq("workspace_id", workspace),
-    client.from("recipes").select("id,favorite").eq("workspace_id", workspace),
+    pages((start, end) => client.from("planner_records").select("id,kind,revision,document").eq("workspace_id", workspace).order("id").range(start, end)),
+    pages((start, end) => client.from("recipe_versions").select("id,recipe_id,created_at,document").eq("workspace_id", workspace)
+      .order("created_at", { ascending: false }).order("id").range(start, end)),
+    pages((start, end) => client.from("recipe_approvals").select("recipe_id,version_id").eq("workspace_id", workspace).order("recipe_id").range(start, end)),
+    pages((start, end) => client.from("recipes").select("id,favorite").eq("workspace_id", workspace).order("id").range(start, end)),
   ]);
-  for (const result of [records, versions, approvals, recipes]) {
-    if (result.error) throw new Error(result.error.message);
-  }
   return {
-    records: records.data as Entry[],
+    records: records as Entry[],
     library: {
-      versions: (versions.data ?? []) as Library["versions"],
-      favorites: (recipes.data ?? []).filter((item) => item.favorite).map((item) => item.id),
-      approvals: Object.fromEntries((approvals.data ?? []).map((item) => [item.recipe_id, item.version_id])),
+      versions: versions as Library["versions"],
+      favorites: recipes.filter((item) => item.favorite).map((item) => item.id),
+      approvals: Object.fromEntries(approvals.map((item) => [item.recipe_id, item.version_id])),
     } satisfies Library,
   };
 }

@@ -28,7 +28,7 @@ export function useWorkspace(client: SupabaseClient | null, workspace: string, i
   const key = `bekah-v1:${identity}:${workspace}`;
   const [data, setData] = useState(() => readCache(key, demo));
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(!demo && !data.records.length && !data.library.versions.length);
+  const [loading, setLoading] = useState(navigator.onLine && !demo && !data.records.length && !data.library.versions.length);
   const [online, setOnline] = useState(() => navigator.onLine);
   const ref = useRef(data);
   const inflight = useRef(false);
@@ -97,10 +97,11 @@ export function useWorkspace(client: SupabaseClient | null, workspace: string, i
     };
   }, [sync]);
 
-  function put<K extends Kind>(kind: K, value: Doc<K>, id = crypto.randomUUID() as string) {
+  function put<K extends Kind>(kind: K, value: Doc<K>, id = crypto.randomUUID() as string, createOnly = false) {
     const document = validatedDocument(kind, value);
     const snapshot = ref.current;
     const existing = snapshot.records.find((item) => item.id === id);
+    if (createOnly && existing) return id;
     const pending = snapshot.queue[id];
     const base = pending ? pending.base : existing?.revision ?? null;
     const entry = { id, kind, revision: base === null ? 0 : base + 1, document } as Entry;
@@ -157,7 +158,18 @@ export function useWorkspace(client: SupabaseClient | null, workspace: string, i
     commit({ ...snapshot, library: { ...snapshot.library, favorites: isFavorite ? favorites : [...favorites, id] } });
   }
 
-  return { ...data, error, loading, online, put, addRecipe, approve, favorite, resolve, sync };
+  async function importWebsite(url: string) {
+    const { data } = await client?.auth.getSession() ?? { data: null };
+    if (!data?.session) throw new Error("Sign in to import a recipe from a website.");
+    const response = await fetch("/api/recipe-source", { method: "POST", headers: {
+      "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}`,
+    }, body: JSON.stringify({ url }) });
+    const result = await response.json() as { recipe?: Recipe; error?: string };
+    if (!response.ok || !result.recipe) throw new Error(result.error ?? "The recipe could not be imported.");
+    return result.recipe;
+  }
+
+  return { ...data, error, loading, online, put, addRecipe, approve, favorite, resolve, sync, importWebsite };
 }
 
 export type WorkspaceStore = ReturnType<typeof useWorkspace>;

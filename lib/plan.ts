@@ -1,4 +1,4 @@
-import { addDays, occurs, type Doc, type Entry, type Version } from "./domain";
+import { addDays, easternTimeExists, formatAmount, occurs, sharedIngredients, type Doc, type Entry, type Version } from "./domain";
 
 export function eventRecipes(event: Doc<"event">, versions: Version[]) {
   return event.recipes.flatMap((selection) => {
@@ -12,6 +12,37 @@ export function upcoming(events: Entry<"event">[], from: string, days: number) {
     events.filter(({ document }) => occurs(document, day))
       .sort((a, b) => (a.document.start ?? "").localeCompare(b.document.start ?? "") || a.document.title.localeCompare(b.document.title))
       .map((entry) => ({ day, entry })));
+}
+
+export function plannedBakes(events: Entry<"event">[], versions: Version[], sessions: Entry<"session">[], day: string) {
+  const scheduled = upcoming(events, day, 1).filter(({ entry }) => entry.document.status === "Scheduled");
+  const planned = scheduled.flatMap(({ entry }) => eventRecipes(entry.document, versions).map((selection) => ({
+    ...selection,
+    eventId: entry.id,
+    eventTitle: entry.document.title,
+    start: entry.document.start,
+    timeNeedsReview: Boolean((entry.document.start && !easternTimeExists(day, entry.document.start)) ||
+      (entry.document.end && !easternTimeExists(day, entry.document.end))),
+  })));
+  return {
+    recipes: planned.map(({ version, target, eventId, eventTitle, start, timeNeedsReview }) => {
+      const history = sessions.filter((item) => item.document.date <= day).sort((a, b) => b.document.date.localeCompare(a.document.date));
+      const notes = history.flatMap((item) => Object.entries(item.document.feedback)).find(([id, feedback]) =>
+        versions.some((candidate) => candidate.id === id && candidate.recipe_id === version.recipe_id) && (feedback.change || feedback.notes));
+      return {
+        versionId: version.id, eventId, eventTitle, start, timeNeedsReview, name: version.document.name, target,
+        originalYield: version.document.yieldLow, yieldUnit: version.document.yieldUnit,
+        oven: [...new Set(version.document.steps.flatMap((step) => step.temperature ? [step.temperature] : []))],
+        photo: scheduled.some(({ entry }) => entry.id === eventId && entry.document.category === "Product photography"),
+        previousNote: notes?.[1].change || notes?.[1].notes || "",
+      };
+    }),
+    ingredients: sharedIngredients(planned, versions).map((row) => ({
+      key: row.key, name: row.name, preparation: row.preparation, amount: row.total ? formatAmount(row.total) : "Check amount",
+      allocations: row.allocations.map(({ recipe, measurement }) => ({ recipe, amount: formatAmount(measurement) })),
+    })),
+    equipment: [...new Set(planned.flatMap(({ version }) => version.document.equipment))],
+  };
 }
 
 export function generatedTasks(events: Entry<"event">[], versions: Version[], from: string, days: number) {

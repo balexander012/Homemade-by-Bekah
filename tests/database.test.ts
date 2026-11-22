@@ -32,7 +32,7 @@ beforeAll(async () => {
     grant usage on schema auth, storage to anon, authenticated;
     grant select, insert on storage.objects to anon, authenticated;
   `);
-  for (const file of ["202611220001_workspace.sql", "202611220002_integration.sql"]) {
+  for (const file of ["202611220001_workspace.sql", "202611220002_integration.sql", "202611220003_photo_references.sql"]) {
     await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"));
   }
   await db.exec(`
@@ -80,6 +80,26 @@ describe("Supabase migration RLS in PostgreSQL", () => {
     expect((await db.query("select name from storage.objects")).rows).toEqual([]);
     expect((await db.query("update public.planner_records set revision=2 where id=$1 returning id", [record])).rows).toEqual([]);
     await as("authenticated", { sub: baker, client_id: client, aud: "wrong-audience" });
+    expect((await db.query("select id from public.planner_records")).rows).toEqual([]);
+  });
+});
+
+describe("OAuth grants on direct database requests", () => {
+  it("rechecks allowlisted client access and prevents destructive changes with a writable grant", async () => {
+    await as("postgres");
+    await db.query("update public.baking_oauth_grants set can_write = true where client_id=$1", [client]);
+    await db.query("update public.planner_records set revision = revision + 1, document = $2::jsonb where id=$1", [record, JSON.stringify({ status: "Scheduled", excludedDates: [] })]);
+    const hook = await db.query<{ token: { claims: { aud: string; baking_write: boolean } } }>(
+      "select public.baking_oauth_token_hook($1::jsonb) as token", [JSON.stringify({ user_id: baker, client_id: client, claims: { aud: "authenticated" } })],
+    );
+    expect(hook.rows[0].token.claims).toMatchObject({ aud: audience, baking_write: true });
+    await as("authenticated", { sub: baker, client_id: client, aud: audience });
+    await expect(db.query("update public.planner_records set revision = revision + 1, document = $2::jsonb where id=$1", [record, JSON.stringify({ status: "Cancelled", excludedDates: [] })])).rejects.toMatchObject({ code: "42501" });
+    const changed = await db.query("update public.planner_records set revision = revision + 1, document = $2::jsonb where id=$1 returning id", [record, JSON.stringify({ status: "Draft", excludedDates: [] })]);
+    expect(changed.rows).toEqual([{ id: record }]);
+    await as("postgres");
+    await db.query("delete from public.baking_oauth_grants where client_id=$1", [client]);
+    await as("authenticated", { sub: baker, client_id: client, aud: audience });
     expect((await db.query("select id from public.planner_records")).rows).toEqual([]);
   });
 });

@@ -3,15 +3,14 @@
 import { useEffect, useState } from "react";
 import { Camera } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { easternDate, shotStatuses, shotsFor, type Doc, type Entry, type Version } from "@/lib/domain";
+import { activeVersions, easternDate, shotStatuses, shotsFor, type Doc, type Entry, type Version } from "@/lib/domain";
+import { imageAccept, uploadPhoto, validatePhoto } from "@/lib/images";
 import { recordsOf } from "@/lib/store";
 import type { WorkspaceStore } from "@/lib/use-workspace";
 import { Button, Field, Heading, Status, message } from "./ui";
 
 const uses = ["Website", "Instagram", "Facebook", "TikTok", "Product catalog", "Packaging"] as const;
-const extensions: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "image/heif": "heif", "image/avif": "avif" };
-
-function Photo({ client, path, alt }: { client: SupabaseClient; path: string; alt: string }) {
+export function Photo({ client, path, alt }: { client: SupabaseClient; path: string; alt: string }) {
   const [url, setUrl] = useState("");
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -75,15 +74,10 @@ function ProductPhotos({ client, workspace, session, version, store }: {
     setError("");
     let count = 0;
     try {
-      for (const file of files) {
-        const suffix = extensions[file.type];
-        if (!suffix || file.size > 15728640) throw new Error("Choose JPEG, PNG, WebP, HEIC, HEIF, or AVIF images up to 15 MB each.");
-      }
+      files.forEach(validatePhoto);
       for (const file of files) {
         const id = crypto.randomUUID();
-        const path = `${workspace}/${session.id}/${version.id}/${id}.${extensions[file.type]}`;
-        const result = await client.storage.from("baking-photos").upload(path, file, { contentType: file.type, upsert: false });
-        if (result.error) throw new Error(result.error.message);
+        const path = await uploadPhoto(client, `${workspace}/${session.id}/${version.id}`, file, id);
         store.put("photo", { sessionId: session.id, versionId: version.id, path, shot, captured: easternDate(), use, status: "Captured", hero: false }, id);
         count += 1;
       }
@@ -105,10 +99,15 @@ function ProductPhotos({ client, workspace, session, version, store }: {
       <p>Use soft side light and a simple surface. Capture the full bake first, then move closer for texture.</p>
       <p>Leave room in the frame for the website crop. Use the broken-open or sliced shot to show the interior.</p>
     </div></details>
+    {client && recordsOf(store.records, "reference").some(({ document }) => document.versionId === version.id) && <details>
+      <summary>Recipe photo references</summary>
+      <div className="tiles">{recordsOf(store.records, "reference").filter(({ document }) => document.versionId === version.id).map((item) =>
+        <div className="stack compact" key={item.id}><Photo client={client} path={item.document.path} alt={item.document.title} /><p>{item.document.notes}</p></div>)}</div>
+    </details>}
     {client ? <form className="stack" onSubmit={(e) => { e.preventDefault(); void upload(); }}>
       <div className="cols"><Field label="Shot type"><select value={shot} onChange={(e) => setShot(e.target.value)}>{shots.map((name) => <option key={name}>{name}</option>)}</select></Field>
         <Field label="Intended use"><select value={use} onChange={(e) => setUse(e.target.value as typeof use)}>{uses.map((name) => <option key={name}>{name}</option>)}</select></Field></div>
-      <Field label="Choose photos"><input key={fileKey} type="file" accept={Object.keys(extensions).join(",")} multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} /></Field>
+      <Field label="Choose photos"><input key={fileKey} type="file" accept={imageAccept} multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} /></Field>
       {error && <p className="notice error" role="alert">{error}</p>}
       <div className="actions"><Button type="submit" disabled={!store.online || busy || !files.length}>{busy ? "Uploading…" : "Upload photos"}</Button>
         {uploaded > 0 && <span role="status">{uploaded} uploaded</span>}{!store.online && <p className="muted">Reconnect to upload photos.</p>}</div>
@@ -118,13 +117,53 @@ function ProductPhotos({ client, workspace, session, version, store }: {
       <p>{entry.document.shot} · {entry.document.use} · {entry.document.captured}</p>
       <Field label="Photo status"><select value={entry.document.status} onChange={(e) => store.put("photo", { ...entry.document, status: e.target.value as typeof shotStatuses[number] }, entry.id)}>
         {shotStatuses.map((name) => <option key={name}>{name}</option>)}</select></Field>
-      <Button tone="secondary" disabled={entry.document.hero} onClick={() => {
-        for (const image of related) if (image.document.hero && image.id !== entry.id) store.put("photo", { ...image.document, hero: false }, image.id);
-        store.put("photo", { ...entry.document, hero: true }, entry.id);
-      }}>{entry.document.hero ? "Hero image" : "Set as hero"}</Button>
+      <Button tone="secondary" disabled={(session.document.heroPhotos?.[version.id] ?? related.find((item) => item.document.hero)?.id) === entry.id} onClick={() =>
+        store.put("session", { ...session.document, heroPhotos: { ...session.document.heroPhotos, [version.id]: entry.id } }, session.id)}>
+        {(session.document.heroPhotos?.[version.id] ?? related.find((item) => item.document.hero)?.id) === entry.id ? "Hero image" : "Set as hero"}
+      </Button>
     </div>)}</div>}
     <Feedback key={version.id} session={session} version={version} store={store} />
   </article>;
+}
+
+function References({ store, client, workspace }: { store: WorkspaceStore; client: SupabaseClient; workspace: string }) {
+  const [title, setTitle] = useState("");
+  const [notes, setNotes] = useState("");
+  const [version, setVersion] = useState("");
+  const [file, setFile] = useState<File>();
+  const [fileKey, setFileKey] = useState(0);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const references = recordsOf(store.records, "reference");
+  return <section className="panel"><details><summary>Photo references · {references.length}</summary><div className="stack">
+    <form className="stack" onSubmit={async (event) => {
+      event.preventDefault();
+      if (!file || busy) return;
+      setBusy(true); setError("");
+      try {
+        const id = crypto.randomUUID();
+        const path = await uploadPhoto(client, `${workspace}/references`, file, id);
+        store.put("reference", { title, notes, path, versionId: version || undefined }, id);
+        setTitle(""); setNotes(""); setVersion(""); setFile(undefined); setFileKey((value) => value + 1);
+      } catch (cause) { setError(message(cause)); }
+      finally { setBusy(false); }
+    }}>
+      <div className="cols">
+        <Field label="Reference title"><input required maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
+        <Field label="Recipe (optional)"><select value={version} onChange={(e) => setVersion(e.target.value)}>
+          <option value="">General reference</option>{activeVersions(store.library).map((item) => <option value={item.id} key={item.id}>{item.document.name}</option>)}
+        </select></Field>
+      </div>
+      <Field label="Framing, lighting, or source notes"><textarea maxLength={15000} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
+      <Field label="Reference image"><input type="file" key={fileKey} accept={imageAccept} onChange={(e) => setFile(e.target.files?.[0])} /></Field>
+      {error && <p role="alert" className="notice error">{error}</p>}
+      <Button type="submit" disabled={!file || !store.online || busy}>{busy ? "Uploading…" : "Save photo reference"}</Button>
+    </form>
+    <div className="tiles">{references.map((item) => <article className="row stack compact" key={item.id}>
+      <Photo client={client} path={item.document.path} alt={item.document.title} />
+      <h3>{item.document.title}</h3>{item.document.notes && <p>{item.document.notes}</p>}
+    </article>)}</div>
+  </div></details></section>;
 }
 
 export function Photos({ store, client, workspace }: { store: WorkspaceStore; client: SupabaseClient | null; workspace: string }) {
@@ -135,5 +174,6 @@ export function Photos({ store, client, workspace }: { store: WorkspaceStore; cl
   return <><Heading title="Photography" detail="Ready for photos" /><section className="stack">
     {queue.length ? queue.map(({ session, version }) => <ProductPhotos key={`${session.id}:${version.id}`} {...{ store, client, workspace, session, version }} />) :
       <div className="panel stack"><Camera /><h2>No batches ready</h2><p className="muted">Finishing a batch adds its shot checklist here.</p></div>}
+    {client && <References {...{ store, client, workspace }} />}
   </section></>;
 }

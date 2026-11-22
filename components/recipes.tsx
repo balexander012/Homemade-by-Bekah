@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { BookOpen, Plus, Star } from "lucide-react";
 import { activeVersions, blankRecipe, categories, canBake, formatAmount, recipeStatuses, scale, type Recipe, type Version } from "@/lib/domain";
+import { parseRecipeImport } from "@/lib/recipe-import";
 import { defaultPolicies } from "@/lib/sample";
 import { recordsOf } from "@/lib/store";
 import type { WorkspaceStore } from "@/lib/use-workspace";
@@ -120,6 +121,9 @@ export function RecipeEditor({ store, version, initialName, complete, cancel }: 
 }) {
   const [recipe, setRecipe] = useState<Recipe>(() => version ? { ...version.document, status: "Draft", changeReason: "" } : blankRecipe(initialName));
   const [paste, setPaste] = useState("");
+  const [website, setWebsite] = useState("");
+  const [imported, setImported] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const patch = (value: Partial<Recipe>) => setRecipe((previous) => ({ ...previous, ...value }));
@@ -135,7 +139,7 @@ export function RecipeEditor({ store, version, initialName, complete, cancel }: 
   async function importFile(file: File | undefined) {
     if (!file) return;
     setError("");
-    if (file.size > 100000 || !/\.(txt|md|csv)$/i.test(file.name)) return setError("Choose a plain-text, Markdown, or CSV file under 100 KB.");
+    if (file.size > 1024 * 1024 || !/\.(txt|md|csv|json|html?)$/i.test(file.name)) return setError("Choose a text, Markdown, CSV, JSON, or HTML file up to 1 MB.");
     try { setPaste(await file.text()); } catch { setError("Could not read this file."); }
   }
   return <><Heading title={version ? "New recipe revision" : "New recipe"} />
@@ -156,12 +160,28 @@ export function RecipeEditor({ store, version, initialName, complete, cancel }: 
           <summary>Import source text</summary>
           <div className="stack">
             <Field label="Paste recipe or transcript"><textarea value={paste} onChange={(event) => setPaste(event.target.value)} /></Field>
-            <Field label="Upload text file"><input type="file" accept=".txt,.md,.csv,text/plain" onChange={(event) => void importFile(event.target.files?.[0])} /></Field>
-            <Button tone="secondary" disabled={!paste.trim()} onClick={() => { patch({ notes: [recipe.notes, paste.trim()].filter(Boolean).join("\n\n"), status: "Draft" }); setPaste(""); }}>Add source text to notes</Button>
-            <p className="muted">Review the source and enter verified measurements and instructions below.</p>
+            <Field label="Upload text or HTML file"><input type="file" accept=".txt,.md,.csv,.json,.html,.htm,text/plain" onChange={(event) => void importFile(event.target.files?.[0])} /></Field>
+            <div className="actions">
+              <Button tone="secondary" disabled={!paste.trim()} onClick={() => {
+                setError("");
+                const found = parseRecipeImport(paste, recipe.source);
+                if (found) { setRecipe(found); setImported(true); }
+                else patch({ notes: [recipe.notes, paste.trim().slice(0, 14000)].filter(Boolean).join("\n\n").slice(0, 15000), status: "Draft" });
+                setPaste("");
+              }}>Review pasted source</Button>
+            </div>
+            <Field label="Recipe website link"><input type="url" value={website} onChange={(event) => setWebsite(event.target.value)} /></Field>
+            <Button tone="secondary" disabled={!website.trim() || importing} onClick={async () => {
+              setError(""); setImporting(true);
+              try { setRecipe(await store.importWebsite(website)); setImported(true); }
+              catch (cause) { setError(message(cause)); }
+              finally { setImporting(false); }
+            }}>{importing ? "Reading website…" : "Review website recipe"}</Button>
+            <p className="muted">Review the source and enter verified measurements and instructions below. For screenshots and videos, paste text or a transcript.</p>
           </div>
         </details>
       </section>
+      {imported && <p className="notice warning" role="status">Imported as a draft. Review ingredient quantities, oven steps, times and ingredient assignments before baking.</p>}
       <section className="panel stack"><div className="line"><h2>Ingredients</h2><Button tone="secondary" onClick={() => patch({ ingredients: [...recipe.ingredients, { id: crypto.randomUUID(), name: "", quantity: null, unit: "", preparation: "" }] })}>Add ingredient</Button></div>
         {recipe.ingredients.map((item, index) => {
           const change = (value: Partial<typeof item>) => patch({ ingredients: recipe.ingredients.map((ingredient) => ingredient.id === item.id ? { ...ingredient, ...value } : ingredient) });
@@ -207,7 +227,7 @@ export function RecipeEditor({ store, version, initialName, complete, cancel }: 
         </Field>)}
       </div></details></section>
       {error && <p className="notice error" role="alert">{error}</p>}
-      <div className="actions"><Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save recipe"}</Button><Button tone="ghost" onClick={cancel}>Cancel</Button></div>
+      <div className="actions"><Button type="submit" disabled={busy || importing}>{busy ? "Saving…" : "Save recipe"}</Button><Button tone="ghost" onClick={cancel}>Cancel</Button></div>
     </form>
   </>;
 }
