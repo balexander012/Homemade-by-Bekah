@@ -1,0 +1,285 @@
+{
+  "schemaVersion": 1,
+  "kind": "recipe",
+  "importId": "bde169f4-d035-49e0-a235-36cb67549f8c",
+  "recipeKey": "homemade-cinnamon-rolls",
+  "aliases": [
+    "Cinnamon rolls"
+  ],
+  "verification": "Finalized",
+  "sourceReferences": [
+    "Bekah Baking Library, 'Cinnamon Rolls.md', compiled 2026-11-15 from user-provided screenshots and instructions (original yogurt-based dough and cinnamon filling).",
+    "Bekah Baking ChatGPT Project, cinnamon roll discussions on 2026-11-21 and 'Cookie Photography Review' on 2026-11-22: user requested latest cottage-oriented formula; excluded the heavy-cream pour and cream-cheese frosting, used vanilla butter icing with water instead of milk, and 350°F bake without the earlier 375°F finishing stage."
+  ],
+  "issues": [],
+  "recipe": {
+    "name": "Homemade Cinnamon Rolls",
+    "category": "Cinnamon rolls and sweet rolls",
+    "description": "Yeasted cinnamon rolls with cinnamon brown-sugar filling and vanilla butter icing. Finalized recipe instructions for baking; cottage-food shelf stability has not been established.",
+    "source": "Bekah Baking original cinnamon roll instructions (saved 2026-11-15); revised by Bekah in conversations 2026-11-21 to 2026-11-22",
+    "tags": [
+      "yeast dough",
+      "vanilla butter icing"
+    ],
+    "yieldLow": 8,
+    "yieldHigh": 12,
+    "yieldUnit": "rolls",
+    "status": "Draft",
+    "ingredients": [
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007531",
+        "name": "Milk",
+        "quantity": 0.75,
+        "unit": "cup",
+        "preparation": "warmed to about 110°F"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007532",
+        "name": "Sugar",
+        "quantity": 0.5,
+        "unit": "cup",
+        "preparation": "reserve 1 tablespoon from this measured amount for yeast activation"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007533",
+        "name": "Active dry yeast",
+        "quantity": 2.5,
+        "unit": "teaspoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007534",
+        "name": "Plain Greek yogurt or sour cream",
+        "quantity": 0.5,
+        "unit": "cup",
+        "preparation": "one or the other, as in original recipe"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007535",
+        "name": "Salted butter for dough",
+        "quantity": 113,
+        "unit": "g",
+        "preparation": "1/2 cup; softened"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007536",
+        "name": "Large eggs",
+        "quantity": 2,
+        "unit": "each",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007537",
+        "name": "Vanilla extract for dough",
+        "quantity": 1,
+        "unit": "teaspoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007538",
+        "name": "Bread flour",
+        "quantity": 540,
+        "unit": "g",
+        "preparation": "4 1/2 cups"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007539",
+        "name": "Salt",
+        "quantity": 1,
+        "unit": "teaspoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-00000000753a",
+        "name": "Butter for cinnamon filling",
+        "quantity": 113,
+        "unit": "g",
+        "preparation": "1/2 cup"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-00000000753b",
+        "name": "Brown sugar for cinnamon filling",
+        "quantity": 240,
+        "unit": "g",
+        "preparation": "1 cup"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-00000000753c",
+        "name": "Ground cinnamon",
+        "quantity": 2,
+        "unit": "tablespoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-00000000753d",
+        "name": "Vanilla extract for cinnamon filling",
+        "quantity": 1,
+        "unit": "teaspoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-00000000753e",
+        "name": "Salted butter for vanilla icing",
+        "quantity": 57,
+        "unit": "g",
+        "preparation": "1/4 cup; softened"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-00000000753f",
+        "name": "Powdered sugar for icing",
+        "quantity": 240,
+        "unit": "g",
+        "preparation": "2 cups"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007540",
+        "name": "Vanilla extract for icing",
+        "quantity": 1,
+        "unit": "teaspoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007541",
+        "name": "Water for icing",
+        "quantity": 1,
+        "unit": "tablespoon",
+        "preparation": "start with 1 tablespoon and add gradually up to 2 tablespoons total as needed"
+      }
+    ],
+    "steps": [
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000075f9",
+        "instruction": "Warm 3/4 cup milk to approximately 110°F. Stir in 2 1/2 teaspoons active dry yeast and 1 tablespoon sugar taken from the measured 1/2 cup. Allow the yeast to activate.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-000000007531",
+          "a6b8c42d-7cd1-4a17-8d3e-000000007533",
+          "a6b8c42d-7cd1-4a17-8d3e-000000007532"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000075fa",
+        "instruction": "Add remaining sugar, 1/2 cup plain Greek yogurt or sour cream, 1/2 cup (113 g) softened salted butter, 2 eggs, 1 teaspoon vanilla extract, 4 1/2 cups (540 g) bread flour, and 1 teaspoon salt. Mix on low speed for approximately 1 minute.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-000000007532",
+          "a6b8c42d-7cd1-4a17-8d3e-000000007534",
+          "a6b8c42d-7cd1-4a17-8d3e-000000007535",
+          "a6b8c42d-7cd1-4a17-8d3e-000000007536",
+          "a6b8c42d-7cd1-4a17-8d3e-000000007537",
+          "a6b8c42d-7cd1-4a17-8d3e-000000007538",
+          "a6b8c42d-7cd1-4a17-8d3e-000000007539"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000075fb",
+        "instruction": "Rest the dough for 5 minutes.",
+        "ingredients": [],
+        "kind": "Rest",
+        "minutes": 5
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000075fc",
+        "instruction": "Knead on medium speed for 5 to 7 minutes.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000075fd",
+        "instruction": "Allow dough to rise for 30 to 45 minutes or until doubled.",
+        "ingredients": [],
+        "kind": "Rest",
+        "minutes": 30
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000075fe",
+        "instruction": "Roll dough to approximately 16 x 15 inches for 8 large rolls, or 24 x 15 inches for 12 smaller rolls.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000075ff",
+        "instruction": "Spread 1/2 cup (113 g) butter across the rolled dough. Mix and distribute 1 cup (240 g) brown sugar, 2 tablespoons cinnamon, and 1 teaspoon vanilla extract.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-00000000753a",
+          "a6b8c42d-7cd1-4a17-8d3e-00000000753b",
+          "a6b8c42d-7cd1-4a17-8d3e-00000000753c",
+          "a6b8c42d-7cd1-4a17-8d3e-00000000753d"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007600",
+        "instruction": "Roll up and cut into 8 large or 12 smaller pieces. Arrange in a prepared baking pan.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007601",
+        "instruction": "Allow shaped rolls to rise another 25 to 30 minutes.",
+        "ingredients": [],
+        "kind": "Rest",
+        "minutes": 25
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007602",
+        "instruction": "Preheat oven to 350°F. Bake at 350°F: for 8 large rolls, approximately 22 to 24 minutes; for 12 smaller rolls, approximately 20 to 22 minutes. Check for a cooked center and reported internal temperature of 190 to 200°F. Timer's 20 minutes is an initial check, not a fixed finish time.",
+        "ingredients": [],
+        "kind": "Oven",
+        "minutes": 20,
+        "temperature": 350
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007603",
+        "instruction": "Allow rolls to cool completely before adding vanilla icing.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007604",
+        "instruction": "Beat 1/4 cup (57 g) softened salted butter for icing for 3 to 5 minutes until creamy.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-00000000753e"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007605",
+        "instruction": "Gradually add 2 cups (240 g) powdered sugar and mix in 1 teaspoon vanilla extract.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-00000000753f",
+          "a6b8c42d-7cd1-4a17-8d3e-000000007540"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007606",
+        "instruction": "Add 1 to 2 tablespoons water, starting with 1 tablespoon and adding gradually until desired icing consistency is reached.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-000000007541"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000007607",
+        "instruction": "Spread icing on completely cooled rolls.",
+        "ingredients": [],
+        "kind": "Work"
+      }
+    ],
+    "equipment": [
+      "Stand mixer",
+      "Dough hook",
+      "Rolling pin",
+      "Baking pan",
+      "Oven"
+    ],
+    "prep": [],
+    "storage": "Allow rolls to cool completely. If serving the next day, store unfrosted rolls in an airtight container overnight, then ice. Refrigerate frosted rolls unless their shelf stability has been validated. This is not a verified cottage-food-safe commercial storage method.",
+    "freezer": "",
+    "notes": "Latest version removes 1/2 cup warm heavy cream previously poured over rolls and replaces the original cream-cheese frosting with butter icing made using water. Do not add the older 375°F 5-7 minute finishing stage. No legal cottage-food eligibility determination is made by this formula.",
+    "changeReason": "November 21-22: removed cream-cheese frosting and heavy-cream pour; final vanilla butter icing uses 1-2 tbsp water rather than milk; uses 350°F bake without earlier 375°F finishing period.",
+    "exceptions": [],
+    "shots": []
+  }
+}
