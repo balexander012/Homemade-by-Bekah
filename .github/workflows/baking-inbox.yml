@@ -41,7 +41,6 @@ jobs:
         shell: bash
         env:
           EVENT: ${{ github.event_name }}
-          BEFORE: ${{ github.event.before }}
           INBOX: ${{ inputs.inbox }}
         run: |
           set -eu
@@ -49,11 +48,8 @@ jobs:
             printf '%s=true\n' "$INBOX" >> "$GITHUB_OUTPUT"
           else
             for inbox in recipe plan; do
-              if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-                printf '%s=true\n' "$inbox" >> "$GITHUB_OUTPUT"
-                continue
-              fi
-              if ! git diff --quiet "$BEFORE" HEAD -- "$inbox-imports/pending/"; then
+              files=$(git ls-files -- "$inbox-imports/pending/*.json")
+              if [ -n "$files" ]; then
                 printf '%s=true\n' "$inbox" >> "$GITHUB_OUTPUT"
               fi
             done
