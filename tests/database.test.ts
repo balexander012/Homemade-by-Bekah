@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { reviewIssues, recipeInboxSchema } from "../lib/sync-import";
 
 const db = new PGlite();
 const baker = "10000000-0000-4000-8000-000000000001";
@@ -12,7 +13,7 @@ const recipe = "40000000-0000-4000-8000-000000000001";
 const record = "50000000-0000-4000-8000-000000000001";
 const client = "60000000-0000-4000-8000-000000000001";
 const audience = "https://baking.example.com/api/mcp";
-async function as(role: "anon" | "authenticated" | "postgres", claims: object = {}) {
+async function as(role: "anon" | "authenticated" | "postgres" | "baking_recipe_runner" | "baking_plan_runner", claims: object = {}) {
   await db.exec(`reset role; set role ${role}; select set_config('request.jwt.claims','${JSON.stringify(claims)}',false)`);
 }
 
@@ -32,7 +33,7 @@ beforeAll(async () => {
     grant usage on schema auth, storage to anon, authenticated;
     grant select, insert on storage.objects to anon, authenticated;
   `);
-  for (const file of ["202611220001_workspace.sql", "202611220002_integration.sql", "202611220003_photo_references.sql"]) {
+  for (const file of ["202611220001_workspace.sql", "202611220002_integration.sql", "202611220003_photo_references.sql", "202611220004_chatgpt_recipe_sync.sql"]) {
     await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"));
   }
   await db.exec(`
@@ -40,6 +41,7 @@ beforeAll(async () => {
     insert into public.workspaces values ('${workspace}', 'Kitchen'), ('${outside}', 'Private kitchen');
     insert into public.workspace_members values ('${workspace}', '${baker}', 'baker'), ('${outside}', '${other}', 'admin');
     insert into public.baking_oauth_grants values ('${client}', '${workspace}', '${baker}', '${audience}', false);
+    insert into baking_import.configuration values ('recipe', '${workspace}'), ('plan', '${workspace}');
   `);
 }, 20000);
 
@@ -101,5 +103,73 @@ describe("OAuth grants on direct database requests", () => {
     await db.query("delete from public.baking_oauth_grants where client_id=$1", [client]);
     await as("authenticated", { sub: baker, client_id: client, aud: audience });
     expect((await db.query("select id from public.planner_records")).rows).toEqual([]);
+  });
+});
+
+describe("the GitHub recipe inbox", () => {
+  const sha = "a".repeat(40);
+  async function submit(input: unknown) {
+    const parsed = recipeInboxSchema.parse(input);
+    const result = await db.query<{ result: { status: string; recipeId: string; versionId: string; replayed: boolean } }>(
+      "select baking_import.submit_recipe($1::jsonb,$2::text[],$3) as result",
+      [JSON.stringify(parsed), parsed.kind === "recipe" ? reviewIssues(parsed) : [], sha],
+    );
+    return result.rows[0].result;
+  }
+  it("replays imports, matches regenerated IDs, protects approved versions and isolates roles", async () => {
+    const fixture = JSON.parse(await readFile(new URL("../recipe-imports/examples/recipe.json", import.meta.url), "utf8"));
+    await as("baking_recipe_runner");
+    const first = await submit(fixture);
+    expect(first.status).toBe("ready_for_review");
+    expect(await submit(fixture)).toMatchObject({ recipeId: first.recipeId, versionId: first.versionId, replayed: true });
+    await expect(submit({ ...fixture, recipe: { ...fixture.recipe, notes: "A reused UUID with different content." } })).rejects.toMatchObject({ code: "23505" });
+    await expect(db.query("select * from public.recipe_versions")).rejects.toMatchObject({ code: "42501" });
+    await expect(db.query("select baking_import.submit_plan('{}','')")).rejects.toMatchObject({ code: "42501" });
+    await as("authenticated", { sub: other });
+    expect((await db.query("select id from public.recipe_imports")).rows).toEqual([]);
+    await expect(db.query("select public.review_baking_recipe_import($1,'approve')", [fixture.importId])).rejects.toMatchObject({ code: "42501" });
+    await as("authenticated", { sub: baker });
+    const approved = (await db.query<{ id:string }>("select public.review_baking_recipe_import($1,'approve') as id", [fixture.importId])).rows[0].id;
+    await as("baking_recipe_runner");
+    const ids = fixture.recipe.ingredients.map(() => crypto.randomUUID());
+    const duplicate = await submit({ ...fixture, importId: crypto.randomUUID(), recipeKey: "alternate-slug",
+      recipe: { ...fixture.recipe, name: "Example only: CINNAMON SUGAR TOPPING!",
+        ingredients: fixture.recipe.ingredients.map((ingredient: object, index: number) => ({ ...ingredient, id: ids[index] })),
+        steps: [{ ...fixture.recipe.steps[0], id: crypto.randomUUID(), ingredients: ids }] } });
+    expect(duplicate).toMatchObject({ status: "already_exists", recipeId: first.recipeId, versionId: approved });
+    const lookup = await submit({ schemaVersion: 1, kind: "lookup", importId: crypto.randomUUID(), recipeKey: "alternate-slug", name: "Demo cinnamon sugar" });
+    expect(lookup).toMatchObject({ status: "found", recipeId: first.recipeId });
+    const changedId = crypto.randomUUID();
+    const changed = await submit({ ...fixture, importId: changedId, recipe: { ...fixture.recipe, yieldLow: 15, changeReason: "Changed yield." } });
+    expect(changed).toMatchObject({ status: "ready_for_review", recipeId: first.recipeId });
+    const incomplete = await submit({ ...fixture, importId: crypto.randomUUID(), verification: "Needs review", recipe: { ...fixture.recipe, yieldLow: null } });
+    expect(incomplete).toMatchObject({ status: "incomplete", versionId: null });
+    await as("authenticated", { sub: baker });
+    expect((await db.query("select version_id from public.recipe_approvals where recipe_id=$1", [first.recipeId])).rows).toEqual([{ version_id: approved }]);
+    const revision = (await db.query<{document:{yieldLow:number;status:string}}>("select document from public.recipe_versions where id=$1", [changed.versionId])).rows[0];
+    expect(revision.document).toMatchObject({ yieldLow: 15, status: "Draft" });
+    await db.query("select public.review_baking_recipe_import($1,'reject')", [changedId]);
+    expect((await db.query("select status from public.recipe_imports where id=$1", [changedId])).rows).toEqual([{ status: "rejected" }]);
+    await expect(db.query("select baking_import.submit_recipe('{}','{}','')")).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("imports a date-only event once and requires the current revision for changes", async () => {
+    const recordId = crypto.randomUUID();
+    const payload = {
+      schemaVersion: 1, importId: crypto.randomUUID(), kind: "event", recordId,
+      event: { title: "Inbox calendar test", date: "2026-11-27", category: "Personal baking", status: "Scheduled",
+        recipes: [], notes: "", recurrence: "None", excludedDates: [] },
+    };
+    await as("baking_plan_runner");
+    const plan = (input: object) => db.query("select baking_import.submit_plan($1::jsonb,$2) as result", [JSON.stringify(input), sha]);
+    expect((await plan(payload)).rows).toEqual([{ result: { status: "saved", revision: 0, replayed: false } }]);
+    expect((await plan(payload)).rows).toEqual([{ result: { status: "saved", revision: 0, replayed: true } }]);
+    const updated = { ...payload, importId: crypto.randomUUID(), event: { ...payload.event, date: "2026-11-28" } };
+    await expect(plan(updated)).rejects.toMatchObject({ code: "40001" });
+    expect((await plan({ ...updated, expectedRevision: 0 })).rows).toEqual([{ result: { status: "saved", revision: 1, replayed: false } }]);
+    await expect(db.query("select * from public.recipe_imports")).rejects.toMatchObject({ code: "42501" });
+    await as("authenticated", { sub: baker });
+    expect((await db.query("select document->>'date' as date, document ? 'start' as has_start from public.planner_records where id=$1", [recordId])).rows)
+      .toEqual([{ date: "2026-11-28", has_start: false }]);
   });
 });

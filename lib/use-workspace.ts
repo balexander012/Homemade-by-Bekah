@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { type Doc, type Entry, type Kind, type Recipe, type Version, recipeSchema, canBake } from "./domain";
 import { approveVersion, ConflictError, emptyLibrary, loadWorkspace, saveRecord, saveVersion, validatedDocument } from "./store";
 import { sampleData } from "./sample";
+import type { Receipt } from "@/components/recipe-review";
 
 type Pending = { base: number | null; entry: Entry; conflict?: boolean };
 type Snapshot = Awaited<ReturnType<typeof loadWorkspace>> & { queue: Record<string, Pending> };
@@ -169,7 +170,29 @@ export function useWorkspace(client: SupabaseClient | null, workspace: string, i
     return result.recipe;
   }
 
-  return { ...data, error, loading, online, put, addRecipe, approve, favorite, resolve, sync, importWebsite };
+  const loadRecipeImports = useCallback(async (): Promise<Receipt[]> => {
+    if (!client) return [];
+    const all: Receipt[] = [];
+    for (let start = 0; ; start += 100) {
+      const { data, error } = await client.from("recipe_imports")
+        .select("id,recipe_id,version_id,previous_version_id,baseline_approval_id,imported_at,status,issues,payload")
+        .eq("workspace_id", workspace).filter("payload->>kind", "eq", "recipe")
+        .in("status", ["ready_for_review", "incomplete", "approved", "rejected"])
+        .order("imported_at", { ascending: false }).order("id").range(start, start + 99);
+      if (error) throw new Error(error.message);
+      all.push(...(data as Receipt[]));
+      if (data.length < 100) return all;
+    }
+  }, [client, workspace]);
+
+  async function reviewRecipeImport(importId: string, decision: "approve" | "reject"): Promise<string | null> {
+    if (!client) throw new Error("Sign in to review imported recipes.");
+    const { data, error } = await client.rpc("review_baking_recipe_import", { import_id: importId, decision });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  return { ...data, error, loading, online, put, addRecipe, approve, favorite, resolve, sync, importWebsite, loadRecipeImports, reviewRecipeImport };
 }
 
 export type WorkspaceStore = ReturnType<typeof useWorkspace>;
