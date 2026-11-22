@@ -92,9 +92,14 @@ function ProductPhotos({ client, workspace, session, version, store }: {
   return <article className="panel stack">
     <div className="line"><div className="stack compact"><p className="eyebrow">{session.document.title} · {session.document.date}</p><h2>{version.document.name}</h2></div>
       <Status>{shots.every((name) => check[name] === "Approved") ? "Shots approved" : "Ready for photos"}</Status></div>
-    <div className="tiles">{shots.map((name) => <Field key={name} label={name}><select value={check[name] ?? "Not started"} onChange={(e) => {
-      store.put("session", { ...session.document, shots: { ...session.document.shots, [version.id]: { ...check, [name]: e.target.value as typeof shotStatuses[number] } } }, session.id);
-    }}>{shotStatuses.map((status) => <option key={status}>{status}</option>)}</select></Field>)}</div>
+    <h3>Shot list</h3>
+    <div className="shot-grid">{shots.map((name) => {
+      const count = related.filter((item) => item.document.shot === name).length;
+      return <div className="shot-tile" data-status={check[name] ?? "Not started"} key={name}><Field label={name}><select value={check[name] ?? "Not started"} onChange={(e) => {
+        store.put("session", { ...session.document, shots: { ...session.document.shots, [version.id]: { ...check, [name]: e.target.value as typeof shotStatuses[number] } } }, session.id);
+      }}>{shotStatuses.map((status) => <option key={status}>{status}</option>)}</select></Field>
+        <p className="muted" style={{ margin: "6px 0 0", fontSize: 15 }}>{count ? `${count} photo${count === 1 ? "" : "s"}` : "No photos yet"}</p></div>;
+    })}</div>
     <details><summary>Framing and lighting</summary><div className="stack compact">
       <p>Use soft side light and a simple surface. Capture the full bake first, then move closer for texture.</p>
       <p>Leave room in the frame for the website crop. Use the broken-open or sliced shot to show the interior.</p>
@@ -107,7 +112,9 @@ function ProductPhotos({ client, workspace, session, version, store }: {
     {client ? <form className="stack" onSubmit={(e) => { e.preventDefault(); void upload(); }}>
       <div className="cols"><Field label="Shot type"><select value={shot} onChange={(e) => setShot(e.target.value)}>{shots.map((name) => <option key={name}>{name}</option>)}</select></Field>
         <Field label="Intended use"><select value={use} onChange={(e) => setUse(e.target.value as typeof use)}>{uses.map((name) => <option key={name}>{name}</option>)}</select></Field></div>
-      <Field label="Choose photos"><input key={fileKey} type="file" accept={imageAccept} multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} /></Field>
+      <label className="file-pick"><input key={fileKey} type="file" accept={imageAccept} multiple aria-label="Choose photos" onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
+        <span className="hb-btn hb-btn--app hb-btn--secondary" aria-hidden="true"><Camera size={22} /> Add photos</span>
+        <span className="muted">{files.length ? `${files.length} selected` : "From the camera or photo library"}</span></label>
       {error && <p className="notice error" role="alert">{error}</p>}
       <div className="actions"><Button type="submit" disabled={!store.online || busy || !files.length}>{busy ? "Uploading…" : "Upload photos"}</Button>
         {uploaded > 0 && <span role="status">{uploaded} uploaded</span>}{!store.online && <p className="muted">Reconnect to upload photos.</p>}</div>
