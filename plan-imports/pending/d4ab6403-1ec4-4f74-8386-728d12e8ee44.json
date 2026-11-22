@@ -8,8 +8,17 @@
     "date": "2026-11-22",
     "category": "Personal baking",
     "status": "Scheduled",
-    "recipes": [],
-    "notes": "Sunday, November 22, 2026: Plan all three bakes. 1. Bekah's Jumbo Chocolate Chip Cookies: finalized working version, recipeKey jumbo-chocolate-chip-cookies, source Bekah Baking 2026-11-22, six cookies at ~98 g each, 350°F 18 minutes, recipe import 7c9196f6-b67b-489c-9b07-875480c4e1e6 (ingredient-weight mismatch flagged in recipe). 2. Homemade by Bekah: S'mores Cookies: finalized working version, recipeKey smores-cookies, source Bekah Baking 2026-11-22, yield 12, chill dough 1 hour, 350°F approximately 12 minutes, visible half-marshmallow topping and Hershey's rectangle after baking, recipe import cf48333c-e3ea-4e90-920d-68de761068b1 (revised presentation not yet tested). 3. Homemade Cinnamon Rolls: latest November 22 working revision, recipeKey homemade-cinnamon-rolls, source Bekah Baking 2026-11-15 saved recipe and 2026-11-21/22 cottage-food modification discussion, yield 8 large or 12 smaller rolls, dough first rise 30-45 minutes and second rise 25-30 minutes, 350°F for 22-24 minutes if 8 large or 20-22 minutes if 12 smaller, vanilla butter icing made with water, no heavy-cream pour or cream cheese frosting; recipe import bde169f4-d035-49e0-a235-36cb67549f8c. Exact baking schedule and chosen quantities not given; no start/end clock time assigned. All three are named in notes, with NO linked version IDs because the GitHub integration did not reveal confirmed recipe version IDs; must attach in the app after processing. This consolidated event supersedes the prior unsynced two-cookie event import 48968d05-f4e1-4d6a-9ac4-303b1a4e988b. No recipe approval or sale-safety status is implied.",
+    "recipes": [
+      {
+        "versionId": "1e49c165-af4b-43de-b924-139161ef8c8c",
+        "target": null
+      },
+      {
+        "versionId": "83340473-a204-40e4-9788-75a631e54648",
+        "target": null
+      }
+    ],
+    "notes": "Sunday, November 22, 2026: Plan all three bakes. 1. Bekah's Jumbo Chocolate Chip Cookies: finalized working version, recipeKey jumbo-chocolate-chip-cookies, source Bekah Baking 2026-11-22, six cookies at ~98 g each, 350°F 18 minutes, recipe import 7c9196f6-b67b-489c-9b07-875480c4e1e6 (ingredient-weight mismatch flagged in recipe). 2. Homemade by Bekah: S'mores Cookies: finalized working version, recipeKey smores-cookies, source Bekah Baking 2026-11-22, yield 12, chill dough 1 hour, 350°F approximately 12 minutes, visible half-marshmallow topping and Hershey's rectangle after baking, recipe import cf48333c-e3ea-4e90-920d-68de761068b1 (revised presentation not yet tested). 3. Homemade Cinnamon Rolls: latest November 22 working revision, recipeKey homemade-cinnamon-rolls, source Bekah Baking 2026-11-15 saved recipe and 2026-11-21/22 cottage-food modification discussion, yield 8 large or 12 smaller rolls, dough first rise 30-45 minutes and second rise 25-30 minutes, 350°F for 22-24 minutes if 8 large or 20-22 minutes if 12 smaller, vanilla butter icing made with water, no heavy-cream pour or cream cheese frosting; recipe import bde169f4-d035-49e0-a235-36cb67549f8c. Exact baking schedule and chosen quantities not given; no start/end clock time assigned. Linked existing drafts for Jumbo Chocolate Chip Cookies and Homemade Cinnamon Rolls. The linked Jumbo draft records a yield of seven; the proposed six-cookie version is incomplete and needs confirmation. S'mores Cookies remains unlinked because its incomplete import has no saved version. This consolidated event supersedes the prior unsynced two-cookie event import 48968d05-f4e1-4d6a-9ac4-303b1a4e988b. ",
     "recurrence": "None",
     "excludedDates": []
   }
