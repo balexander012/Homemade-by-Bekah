@@ -1,0 +1,305 @@
+{
+  "schemaVersion": 1,
+  "kind": "recipe",
+  "importId": "cf48333c-e3ea-4e90-920d-68de761068b1",
+  "recipeKey": "smores-cookies",
+  "aliases": [
+    "S'mores Graham Cracker Cookies"
+  ],
+  "verification": "Needs review",
+  "sourceReferences": [
+    "Bekah Baking ChatGPT Project, user-supplied 'Homemade by Bekah: S'mores Cookies', FINALIZED WORKING RECIPE | ANGIE'S S'MORES COOKIES, pasted 2026-11-22 at 22:27 UTC. Exact 12-cookie formula and revised untested exposed-marshmallow assembly.",
+    "Original inspiration: Angie's S'mores Cookies TikTok as identified in user's finalized working recipe. User supplied a Boston Girl Bakes S'mores Chocolate Chip Cookies image link as visual illustration, not as the source of the formula."
+  ],
+  "issues": [
+    "The exposed-marshmallow assembly and reduction from one whole marshmallow to one half per cookie are the chosen finalized working instructions, but user explicitly states these changes have not been tested. Confirm resulting appearance before approving as a tested production recipe.",
+    "Extra mini marshmallows are listed as an optional topping, but no quantity or method for applying them is provided. Kept as an unresolved optional ingredient without inventing an amount."
+  ],
+  "recipe": {
+    "name": "Homemade by Bekah: S'mores Cookies",
+    "category": "Cookies",
+    "description": "Angie's S'mores Cookies adapted as a finalized working version after the first batch: visible half-marshmallow on top, chocolate rectangle added after baking. New assembly untested.",
+    "source": "Angie's S'mores Cookies (TikTok) adapted by Bekah, as transcribed in user-supplied finalized working recipe, 2026-11-22; Boston Girl Bakes image linked for illustration only.",
+    "tags": [
+      "smores",
+      "graham crackers",
+      "visible marshmallow",
+      "working recipe"
+    ],
+    "yieldLow": 12,
+    "yieldUnit": "cookies",
+    "status": "Draft",
+    "ingredients": [
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000001",
+        "name": "Unsalted butter",
+        "quantity": 150,
+        "unit": "g",
+        "preparation": "2/3 cup; softened"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000002",
+        "name": "Light brown sugar",
+        "quantity": 0.5,
+        "unit": "cup",
+        "preparation": "packed"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000003",
+        "name": "Granulated sugar",
+        "quantity": 0.5,
+        "unit": "cup",
+        "preparation": ""
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000004",
+        "name": "Large egg",
+        "quantity": 1,
+        "unit": "each",
+        "preparation": ""
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000005",
+        "name": "Egg yolk",
+        "quantity": 1,
+        "unit": "each",
+        "preparation": ""
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000006",
+        "name": "Vanilla extract",
+        "quantity": 1,
+        "unit": "tsp",
+        "preparation": ""
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000007",
+        "name": "All-purpose flour",
+        "quantity": 1.6666666666666665,
+        "unit": "cups",
+        "preparation": ""
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000008",
+        "name": "Graham crackers",
+        "quantity": 0.5,
+        "unit": "cup",
+        "preparation": "finely crushed; incorporated into dough"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000009",
+        "name": "Baking powder",
+        "quantity": 1,
+        "unit": "tsp",
+        "preparation": ""
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-00000000000a",
+        "name": "Baking soda",
+        "quantity": 0.5,
+        "unit": "tsp",
+        "preparation": ""
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-00000000000b",
+        "name": "Fine sea salt",
+        "quantity": 0.25,
+        "unit": "tsp",
+        "preparation": ""
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-00000000000c",
+        "name": "Mini chocolate chips",
+        "quantity": 0.75,
+        "unit": "cup",
+        "preparation": ""
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-00000000000d",
+        "name": "Graham cracker pieces",
+        "quantity": 12,
+        "unit": "pieces",
+        "preparation": "for filling"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-00000000000e",
+        "name": "Large marshmallows",
+        "quantity": 6,
+        "unit": "each",
+        "preparation": "cut in half, 12 halves total; one half per cookie"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-00000000000f",
+        "name": "Milk chocolate pieces",
+        "quantity": 12,
+        "unit": "pieces",
+        "preparation": "for filling"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000010",
+        "name": "Hershey's milk chocolate rectangles",
+        "quantity": 12,
+        "unit": "rectangles",
+        "preparation": "for topping immediately after baking"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000011",
+        "name": "Extra mini marshmallows",
+        "quantity": null,
+        "unit": "",
+        "preparation": "optional topping; amount not specified"
+      }
+    ],
+    "steps": [
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000065",
+        "instruction": "Beat softened butter, packed light brown sugar, and granulated sugar together for 2 to 3 minutes until creamy.",
+        "ingredients": [
+          "8c8159e2-1b1b-43f4-a22a-000000000001",
+          "8c8159e2-1b1b-43f4-a22a-000000000002",
+          "8c8159e2-1b1b-43f4-a22a-000000000003"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000066",
+        "instruction": "Add the egg, egg yolk, and vanilla extract. Mix until combined.",
+        "ingredients": [
+          "8c8159e2-1b1b-43f4-a22a-000000000004",
+          "8c8159e2-1b1b-43f4-a22a-000000000005",
+          "8c8159e2-1b1b-43f4-a22a-000000000006"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000067",
+        "instruction": "In a separate bowl, whisk together flour, finely crushed graham crackers, baking powder, baking soda, and fine sea salt.",
+        "ingredients": [
+          "8c8159e2-1b1b-43f4-a22a-000000000007",
+          "8c8159e2-1b1b-43f4-a22a-000000000008",
+          "8c8159e2-1b1b-43f4-a22a-000000000009",
+          "8c8159e2-1b1b-43f4-a22a-00000000000a",
+          "8c8159e2-1b1b-43f4-a22a-00000000000b"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000068",
+        "instruction": "Gradually incorporate the dry ingredients into the wet ingredients.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000069",
+        "instruction": "Fold in the mini chocolate chips.",
+        "ingredients": [
+          "8c8159e2-1b1b-43f4-a22a-00000000000c"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-00000000006a",
+        "instruction": "Divide the dough into 12 equal portions and refrigerate for approximately 1 hour.",
+        "ingredients": [],
+        "kind": "Rest",
+        "minutes": 60
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-00000000006b",
+        "instruction": "Flatten each chilled dough portion into a thick disc.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-00000000006c",
+        "instruction": "Place one graham cracker piece and one milk chocolate piece in the center of each dough disc.",
+        "ingredients": [
+          "8c8159e2-1b1b-43f4-a22a-00000000000d",
+          "8c8159e2-1b1b-43f4-a22a-00000000000f"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-00000000006d",
+        "instruction": "Place half a large marshmallow on top of the chocolate in each cookie.",
+        "ingredients": [
+          "8c8159e2-1b1b-43f4-a22a-00000000000e"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-00000000006e",
+        "instruction": "Fold the dough around the filling, sealing the bottom and sides.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-00000000006f",
+        "instruction": "Leave a small opening at the top so some marshmallow is visible. Do not make a hole through the bottom.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000070",
+        "instruction": "Keep the dough relatively thick, but flatten the assembled cookie slightly.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000071",
+        "instruction": "Preheat the oven to 350°F.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000072",
+        "instruction": "Line a baking sheet with parchment paper.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000073",
+        "instruction": "Arrange cookies approximately 3 inches apart.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000074",
+        "instruction": "Bake at 350°F for approximately 12 minutes, checking that the edges are lightly golden and the centers are no longer visibly raw.",
+        "ingredients": [],
+        "kind": "Oven",
+        "minutes": 12,
+        "temperature": 350
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000075",
+        "instruction": "Remove from the oven and immediately press one Hershey's milk chocolate rectangle onto each cookie.",
+        "ingredients": [
+          "8c8159e2-1b1b-43f4-a22a-000000000010"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "8c8159e2-1b1b-43f4-a22a-000000000076",
+        "instruction": "Let the cookies cool on the baking sheet for 10 minutes before transferring.",
+        "ingredients": [],
+        "kind": "Cool",
+        "minutes": 10
+      }
+    ],
+    "equipment": [
+      "Mixing bowls",
+      "Whisk",
+      "Baking sheet",
+      "Parchment paper",
+      "Circular cookie cutter (optional)"
+    ],
+    "prep": [],
+    "storage": "",
+    "freezer": "",
+    "notes": "Chill 1 hour; bake at 350°F for approximately 12 minutes; cool on baking sheet for 10 minutes. Some exposed marshmallow may soften, expand or spread during baking. Add Hershey's milk chocolate rectangle AFTER baking for recognizable shape. If cookies spread unevenly, optionally round edges immediately after baking with a circular cookie cutter. Optional extra mini marshmallows: quantity and timing not confirmed. The visible marshmallow and chocolate should identify cookies as s'mores without cutting them open. First batch fully enclosed the marshmallow; revised opening at top and reduced marshmallow amount have not yet been tested, so final appearance is unconfirmed.",
+    "changeReason": "Supersedes previous S'mores draft: 6 large marshmallows cut in half instead of 12 whole; exactly 12 filling chocolate pieces and 12 Hershey's topping rectangles; beat butter and sugars 2-3 minutes; separate dry mixing; leave top opening exposing marshmallow (never hole through bottom); arrange 3 inches apart; press chocolate rectangle on after baking; optional rounding.",
+    "exceptions": [],
+    "shots": []
+  }
+}
