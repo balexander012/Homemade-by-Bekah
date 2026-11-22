@@ -10,7 +10,7 @@ const git = (...args: string[]) => execFileSync("git", args, { cwd: root, encodi
 const mode = process.argv[2];
 if (mode !== "recipe" && mode !== "plan") throw new Error("Select recipe or plan.");
 const folder = mode === "recipe" ? "recipe-imports/pending" : "plan-imports/pending";
-const database = process.env.IMPORT_DATABASE_URL;
+const database = process.env.IMPORT_DATABASE_URL?.trim();
 const onlyId = process.env.IMPORT_ONLY_ID;
 const idPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 if (onlyId && !idPattern.test(onlyId)) throw new Error("Provide a lowercase import UUID.");
@@ -62,6 +62,7 @@ async function run() {
   }
 
   let client: Client | undefined;
+  let phase = "connection URL";
   try {
     const url = new URL(database);
     if (!["postgres:", "postgresql:"].includes(url.protocol) ||
@@ -70,12 +71,15 @@ async function run() {
       throw new Error("The database secret must use the designated Supabase importer login.");
     }
     // Requiring TLS here keeps query parameters in the secret from overriding verification.
+    phase = "TLS trust";
+    const ca = await readFile(new URL("./certificates/supabase-root-2021.pem", import.meta.url), "utf8");
     client = new Client({
       host: url.hostname, port: url.port ? Number(url.port) : 5432,
       user: decodeURIComponent(url.username), password: decodeURIComponent(url.password),
-      database: "postgres", ssl: { rejectUnauthorized: true }, connectionTimeoutMillis: 12000,
+      database: "postgres", ssl: { ca, rejectUnauthorized: true }, connectionTimeoutMillis: 12000,
       statement_timeout: 20000, application_name: "homemade-baking-inbox",
     });
+    phase = "database connection";
     await client.connect();
     const labels: Record<string,string> = {
       incomplete: "Needs review", ready_for_review: "Draft ready for review", already_exists: "Matching version already exists",
@@ -96,9 +100,13 @@ async function run() {
         lines.push(`| ${entry.id} | Database rejected import${/^[A-Z0-9]{5}$/.test(code) ? ` (${code})` : ""} | — | — | — |`);
       }
     }
-  } catch {
+  } catch (error) {
     failures++;
-    for (const entry of pending) lines.push(`| ${entry.id} | Validated. Database connection unavailable | — | — | — |`);
+    const rawCode = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    const code = /^[A-Z0-9_]{3,50}$/.test(rawCode) ? ` (${rawCode})` : "";
+    const detail = `Could not open ${phase}${code}`;
+    process.stderr.write(`${detail}. Check the importer configuration.\n`);
+    for (const entry of pending) lines.push(`| ${entry.id} | Validated. ${detail} | — | — | — |`);
   } finally {
     try { await client?.end(); } catch { /* The connection may have failed before opening. */ }
     await writeSummary();
