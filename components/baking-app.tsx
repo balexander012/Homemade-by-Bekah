@@ -6,6 +6,7 @@ import type { Session as AuthSession, SupabaseClient } from "@supabase/supabase-
 import { easternDate, timerTime, type Entry } from "@/lib/domain";
 import { authStorageKey, browserClient, recordsOf } from "@/lib/store";
 import { useWorkspace } from "@/lib/use-workspace";
+import { PhotoContext, usePhotoStore } from "@/lib/recipe-photos";
 import { Brand, Button, Field, message } from "./ui";
 
 // Each main destination has its own address (#today, #recipes...) so reloads and the installed app return to the same place.
@@ -152,6 +153,7 @@ export function BakingApp() {
 function Workspace({ client, workspace, identity, signOut }: { client: SupabaseClient | null; workspace: string; identity: string; signOut: () => void }) {
   const demo = !client;
   const store = useWorkspace(client, workspace, identity, demo);
+  const photoStore = usePhotoStore(client, workspace);
   const [tab, setTab] = useState<Tab>("Today");
   useEffect(() => {
     const sync = () => { setTab(tabFromHash(window.location.hash) ?? "Today"); setDetail(undefined); };
@@ -297,7 +299,7 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
   const nextTimer = running.flatMap((item) => item.document.timers).filter((timer) => !timer.cancelled).sort((a, b) => a.deadline - b.deadline)[0];
   const inSession = detail?.screen === "session" || detail?.screen === "start";
   const startLabel = running.length ? "Resume baking" : "Start baking";
-  return <div className="shell">
+  return <PhotoContext.Provider value={photoStore}><div className="shell">
     <a href="#workspace" className="skip">Skip to content</a>
     <aside className="rail"><img className="rail-logo" src="/brand/hb-app-icon.svg" alt="" width="56" height="56" /><nav aria-label="Main navigation">
       {nav.map(({ label, icon: Icon }) => <button type="button" key={label} aria-current={tab === label ? "page" : undefined} onClick={() => open(label)}>
@@ -324,5 +326,5 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
       </div>
       {render()}
     </main>
-  </div>;
+  </div></PhotoContext.Provider>;
 }

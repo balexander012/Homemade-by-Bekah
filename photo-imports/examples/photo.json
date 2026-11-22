@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "photo",
+  "importId": "5d0c8a6e-2f4b-4c1a-9e3d-7b6a5c4d3e21",
+  "recipeKey": "jumbo-chocolate-chip-cookies",
+  "recipeName": "Bekah's Jumbo Chocolate Chip Cookies",
+  "setAsPrimary": true,
+  "mode": "add",
+  "caption": "Fresh out of the oven",
+  "filename": "IMG_1234.jpg",
+  "image": {
+    "contentType": "image/jpeg",
+    "sha256": "0385b7ea90538f39153f2d36077229942fc9b19dfef989fef892e920501e1ef6",
+    "data": "/9j/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAASACADASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAb/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwC4AjlOAAAAAA//2Q=="
+  }
+}

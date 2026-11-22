@@ -7,6 +7,7 @@ import { eventRecipes, plannedBakes, planTasks, upcoming } from "@/lib/plan";
 import { recordsOf } from "@/lib/store";
 import type { WorkspaceStore } from "@/lib/use-workspace";
 import { Button, Field, Heading, Status, message } from "./ui";
+import { RecipeImage } from "./recipe-photos";
 
 export function RecipePicker({ versions, selected, onChange, empty }: { versions: Version[]; selected: Selection[]; onChange: (value: Selection[]) => void; empty?: ReactNode }) {
   return <fieldset className="stack"><legend className="mb-2"><h2>Choose recipes</h2></legend>
@@ -14,6 +15,7 @@ export function RecipePicker({ versions, selected, onChange, empty }: { versions
     <div className="pick-list">{versions.map((version) => {
       const item = selected.find((row) => row.versionId === version.id);
       return <div className="pick" key={version.id}>
+        <RecipeImage recipeId={version.recipe_id} name={version.document.name} size="small" />
         <label className="check"><input type="checkbox" aria-label={version.document.name} checked={Boolean(item)} onChange={(event) => onChange(event.target.checked ?
           [...selected, { versionId: version.id, target: null }] : selected.filter((row) => row.versionId !== version.id))} />
           <span><strong>{version.document.name}</strong><br /><span className="muted">{version.document.category}{version.document.yieldLow ? ` · makes ${version.document.yieldLow} ${version.document.yieldUnit}` : ""}</span></span></label>

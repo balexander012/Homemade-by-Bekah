@@ -58,6 +58,8 @@ The initial imports should cover Jumbo Chocolate Chip Cookies, S’mores Cookies
 - Reviewing in the app is optional. Open **Recipes → Recipes to review** to see drafts. Expand **Compare with the previous version** to see differences. Choose **Approve draft** after testing it, or **Reject draft** to dismiss it while keeping history. If the preferred version changed while a draft awaited review, create a new revision after comparing against the current version.
 - See **Actions → Baking inbox → Summary** for each result. For a temporary connection failure, rerun the workflow on `main` with the same import UUID. For corrected data, submit a new file with a new UUID. Remove or move an invalid inbox file after resolving it so subsequent runs can report success. Git history and the database preserve successful receipts.
 
+For recipe photos, see [chatgpt-photo-sync.md](chatgpt-photo-sync.md).
+
 ## Calendar and Today’s Plan
 
 The independent `plan-imports/pending/<UUID>.json` inbox accepts a version-1 envelope containing `importId`, `recordId`, and `kind` with exactly one matching body property.

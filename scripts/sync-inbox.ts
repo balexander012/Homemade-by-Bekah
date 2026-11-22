@@ -2,7 +2,8 @@ import { execFileSync } from "node:child_process";
 import { appendFile, lstat, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
-import { Client } from "pg";
+import type { Client } from "pg";
+import { openImporter } from "./inbox-db";
 import { planInboxSchema, recipeInboxSchema, reviewIssues } from "../lib/sync-import";
 
 const root = process.env.IMPORT_INBOX_ROOT ?? fileURLToPath(new URL("../", import.meta.url));
@@ -64,23 +65,7 @@ async function run() {
   let client: Client | undefined;
   let phase = "connection URL";
   try {
-    const url = new URL(database);
-    if (!["postgres:", "postgresql:"].includes(url.protocol) ||
-        !/^(db\.[a-z0-9]+\.supabase\.co|[a-z0-9-]+(?:\.[a-z0-9-]+)*\.pooler\.supabase\.com)$/.test(url.hostname) ||
-        !(mode === "recipe" ? /^baking_recipe_runner(?:\.[a-z0-9]+)?$/ : /^baking_plan_runner(?:\.[a-z0-9]+)?$/).test(decodeURIComponent(url.username))) {
-      throw new Error("The database secret must use the designated Supabase importer login.");
-    }
-    // Requiring TLS here keeps query parameters in the secret from overriding verification.
-    phase = "TLS trust";
-    const ca = await readFile(new URL("./certificates/supabase-root-2021.pem", import.meta.url), "utf8");
-    client = new Client({
-      host: url.hostname, port: url.port ? Number(url.port) : 5432,
-      user: decodeURIComponent(url.username), password: decodeURIComponent(url.password),
-      database: "postgres", ssl: { ca, rejectUnauthorized: true }, connectionTimeoutMillis: 12000,
-      statement_timeout: 20000, application_name: "homemade-baking-inbox",
-    });
-    phase = "database connection";
-    await client.connect();
+    client = await openImporter(database, mode as "recipe" | "plan", (next) => { phase = next; });
     const labels: Record<string,string> = {
       incomplete: "Needs review", ready_for_review: "Draft ready for review", already_exists: "Matching version already exists",
       approved: "Previously approved", rejected: "Previously rejected", found: "Recipe found",
