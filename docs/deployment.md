@@ -6,6 +6,8 @@ Use the existing [private repository](https://github.com/balexander012/Homemade-
 
 ## Supabase
 
+The existing project is `zzvcpamwsoyfcimrevgf`. The first three repository migrations were applied in order to its empty database and recorded in migration history. The shared workspace is named **Homemade by Bekah**.
+
 1. Create a Supabase project, ideally with a separate project for testing. Keep the database password in a password manager.
 2. Authenticate through the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started), then run `supabase link --project-ref YOUR_PROJECT_REF` followed by `supabase db push` from this checkout. This installs the relational tables, policies, revision checks, audit log, and private `baking-photos` bucket.
 3. Under Authentication, enable email/password sign-in and disable signup. Use **Authentication → Users → Add user** to create Bekah and the administrator with individually assigned credentials. Copy their user IDs after creation. Deliver passwords privately.
@@ -29,6 +31,8 @@ The owner manages account membership in Supabase. Both roles can manage the kitc
 
 ## Vercel
 
+Use the existing `homemade-by-bekah` project and [production address](https://homemade-by-bekah.vercel.app). The build uses the Next.js preset at repository root with Node.js 22 and default build settings. The Supabase project URL and publishable-key variables are scoped to Preview and Production.
+
 1. Import `balexander012/Homemade-by-Bekah` in Vercel. If it does not appear, grant the Vercel GitHub App access to this repository under GitHub **Settings → Applications → Installed GitHub Apps**. Select the Next.js preset and Node.js 22. Keep the default build command so npm prepares the local OCR files.
 2. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to production. Use your staging values for feature-branch previews. Keep `NEXT_PUBLIC_LOCAL_DEMO` unset.
 3. Deploy from `main` once the application pull request is merged. On the deployed site, verify authorized sign-in, create a recipe and event, and confirm a second browser sees the records. Check that a nonmember account sees the access screen and that the photo bucket stays private.
@@ -39,7 +43,7 @@ The owner manages account membership in Supabase. Both roles can manage the kitc
 ## iPad and iPhone
 
 1. Open the HTTPS app in Safari and sign in.
-2. Use Safari’s Share menu and select **Add to Home Screen**. Open the new icon while online before relying on it during a bake.
+2. In Safari, tap **Share → Add to Home Screen**. If prompted, turn on **Open as Web App**, verify the name **Homemade by Bekah**, then tap **Add**. Open the new icon while online before relying on it during a bake.
 3. Verify a signed-in bake, disconnect Wi-Fi, finish a step, reload, reconnect, and confirm the step on a second signed-in device. Test an iPhone upload while the iPad has the session open.
 4. Timer sound needs an open app and a tap to enable audio. The deadline still runs during a lock or closure. Reopen the app to see the result.
 

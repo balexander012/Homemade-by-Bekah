@@ -2,6 +2,8 @@
 
 A private iPad-first workspace for recipes, planning, multi-recipe baking, timers, photos, and test-bake notes.
 
+[Production address](https://homemade-by-bekah.vercel.app)
+
 ## Run the application
 
 Use Node.js 22 and npm.
