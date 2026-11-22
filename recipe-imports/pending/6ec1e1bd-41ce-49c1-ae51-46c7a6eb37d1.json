@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "kind": "recipe",
+  "importId": "6ec1e1bd-41ce-49c1-ae51-46c7a6eb37d1",
+  "recipeKey": "jumbo-chocolate-chip-cookies",
+  "aliases": [],
+  "verification": "Needs review",
+  "sourceReferences": [
+    "Bekah Baking ChatGPT Project, 'Recipe And Pricing', 2026-11-22: six jumbo cookies around 98 g, 350°F, 18-minute bake; exact ingredient amounts repeated in the most recent chocolate chip recipe.",
+    "Bekah Baking Library, 'Butternut Bakery Chocolate Chip Cookies.md', compiled 2026-11-16 from user-supplied screenshots of Butternut Bakery BEST Chocolate Chip Cookies."
+  ],
+  "issues": [
+    "Six cookies at approximately 98 g each conflicts with the saved full-batch ingredient quantities: 112 g butter + 100 g brown sugar + 75 g granulated sugar + ~50 g egg + 165 g flour + 240 g chocolate chips already exceeds 6 x 98 g, before other ingredients. Confirm whether this recipe was scaled or the dough-ball weight was recorded incorrectly.",
+    "November 22 jumbo bake was documented, but the complete exact latest scaled formula was not independently recovered from an original recipe transcript. Do not treat the older 10-cookie Butternut Bakery formula as a verified 6-cookie formula."
+  ],
+  "recipe": {
+    "name": "Jumbo Chocolate Chip Cookies",
+    "category": "Cookies",
+    "description": "Jumbo cookie batch baked November 22. Quantities and 98 g portion size conflict; flagged for recipe review.",
+    "source": "Bekah Baking 'Recipe And Pricing' conversation 2026-11-22; adapted from Butternut Bakery BEST Chocolate Chip Cookies",
+    "tags": [
+      "jumbo",
+      "needs-yield-verification"
+    ],
+    "yieldLow": 6,
+    "yieldUnit": "cookies",
+    "status": "Draft",
+    "ingredients": [
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000002711",
+        "name": "Unsalted butter",
+        "quantity": 112,
+        "unit": "g",
+        "preparation": "1/2 cup; melted, then cooled"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000002712",
+        "name": "Packed brown sugar",
+        "quantity": 100,
+        "unit": "g",
+        "preparation": "1/2 cup"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000002713",
+        "name": "Granulated cane sugar",
+        "quantity": 75,
+        "unit": "g",
+        "preparation": "1/3 cup"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000002714",
+        "name": "Pure vanilla extract",
+        "quantity": 2,
+        "unit": "teaspoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000002715",
+        "name": "Large egg",
+        "quantity": 1,
+        "unit": "each",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000002716",
+        "name": "Baking soda",
+        "quantity": 0.5,
+        "unit": "teaspoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000002717",
+        "name": "Baking powder",
+        "quantity": 0.5,
+        "unit": "teaspoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000002718",
+        "name": "Fine sea salt",
+        "quantity": 0.5,
+        "unit": "teaspoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000002719",
+        "name": "All-purpose flour",
+        "quantity": 165,
+        "unit": "g",
+        "preparation": "1 1/4 cups; unbleached"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-00000000271a",
+        "name": "Semisweet chocolate chips",
+        "quantity": 240,
+        "unit": "g",
+        "preparation": "1 1/2 cups"
+      }
+    ],
+    "steps": [
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000027d9",
+        "instruction": "Preheat oven to 350°F. Line a baking sheet with parchment paper.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000027da",
+        "instruction": "Melt 1/2 cup (112 g) unsalted butter and let cool. Whisk with 1/2 cup (100 g) packed brown sugar and 1/3 cup (75 g) cane sugar for approximately 1 minute.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-000000002711",
+          "a6b8c42d-7cd1-4a17-8d3e-000000002712",
+          "a6b8c42d-7cd1-4a17-8d3e-000000002713"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000027db",
+        "instruction": "Add 1 large egg and 2 teaspoons pure vanilla extract. Whisk until combined.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-000000002715",
+          "a6b8c42d-7cd1-4a17-8d3e-000000002714"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000027dc",
+        "instruction": "Add 1/2 teaspoon baking soda, 1/2 teaspoon baking powder, and 1/2 teaspoon fine sea salt; mix evenly.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-000000002716",
+          "a6b8c42d-7cd1-4a17-8d3e-000000002717",
+          "a6b8c42d-7cd1-4a17-8d3e-000000002718"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000027dd",
+        "instruction": "Fold in 1 1/4 cups (165 g) all-purpose flour until combined, then fold in 1 1/2 cups (240 g) semisweet chocolate chips.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-000000002719",
+          "a6b8c42d-7cd1-4a17-8d3e-00000000271a"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000027de",
+        "instruction": "Portion dough into six jumbo balls reportedly approximately 98 g each; this yield-weight claim conflicts with the full-batch ingredient quantities and must be reviewed. Space apart on parchment.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000027df",
+        "instruction": "Bake at 350°F for approximately 18 minutes, until edges are golden and centers remain slightly soft.",
+        "ingredients": [],
+        "kind": "Oven",
+        "minutes": 18,
+        "temperature": 350
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-0000000027e0",
+        "instruction": "Cool on the baking sheet for 10 minutes before transferring.",
+        "ingredients": [],
+        "kind": "Cool",
+        "minutes": 10
+      }
+    ],
+    "equipment": [
+      "Mixing bowl",
+      "Whisk",
+      "Baking sheet",
+      "Parchment paper",
+      "Cooling rack"
+    ],
+    "prep": [],
+    "storage": "",
+    "freezer": "",
+    "notes": "One cookie was baked separately after the other cookies and looked different; a still-warm pan was discussed as a possible cause. Chilling was proposed but no mandatory chilling time was finalized. Extra chips and flaky salt were optional but no fixed amounts were specified.",
+    "changeReason": "Newer six-cookie jumbo bake at 350°F/18 minutes vs older Butternut Bakery approximately ten 3-tablespoon cookies at 350°F/12-15 minutes.",
+    "exceptions": [],
+    "shots": []
+  }
+}
