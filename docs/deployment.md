@@ -29,7 +29,7 @@ The owner manages account membership in Supabase. Both roles can manage the kitc
 
 ## Vercel
 
-1. Import `balexander012/Homemade-by-Bekah` in Vercel. If it does not appear, grant the Vercel GitHub App access to this repository under GitHub **Settings → Applications → Installed GitHub Apps**. Select the Next.js preset and Node.js 22.
+1. Import `balexander012/Homemade-by-Bekah` in Vercel. If it does not appear, grant the Vercel GitHub App access to this repository under GitHub **Settings → Applications → Installed GitHub Apps**. Select the Next.js preset and Node.js 22. Keep the default build command so npm prepares the local OCR files.
 2. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to production. Use your staging values for feature-branch previews. Keep `NEXT_PUBLIC_LOCAL_DEMO` unset.
 3. Deploy from `main` once the application pull request is merged. On the deployed site, verify authorized sign-in, create a recipe and event, and confirm a second browser sees the records. Check that a nonmember account sees the access screen and that the photo bucket stays private.
 4. Follow the [OAuth setup](integration.md) if ChatGPT will use this workspace.

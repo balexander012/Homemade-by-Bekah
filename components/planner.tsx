@@ -144,7 +144,11 @@ function TaskRow({ task, store }: { task: Entry<"task">; store: WorkspaceStore }
     <div className="line">
       <label className="check"><input type="checkbox" checked={task.document.status === "Done"}
         onChange={(e) => store.put("task", { ...task.document, status: e.target.checked ? "Done" : "Open" }, task.id)} /><span>{task.document.title}</span></label>
-      <Button tone="ghost" onClick={() => setEdit(!edit)}>{edit ? "Close" : "Edit task"}</Button>
+      <Button tone="ghost" onClick={() => {
+        setTitle(task.document.title);
+        setDate(task.document.date);
+        setEdit(!edit);
+      }}>{edit ? "Close" : "Edit task"}</Button>
     </div>
     {edit && <form className="stack" onSubmit={(e) => { e.preventDefault(); store.put("task", { ...task.document, title, date, offset: undefined }, task.id); setEdit(false); }}>
       <Field label="Task title"><input required maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
@@ -243,6 +247,12 @@ export function Today({ today, now, store, edit, start, resume, showCalendar, sh
           </section>
           <section className="panel stack"><h2>Prepare for tomorrow</h2>
             {tomorrow.length ? tomorrow.map((task) => <TaskRow key={task.id} task={task} store={store} />) : <p className="muted">No preparation due tomorrow.</p>}
+            {tasks.some((task) => task.document.status === "Dismissed" && task.document.date >= today) && <details>
+              <summary>Dismissed tasks</summary>
+              {tasks.filter((task) => task.document.status === "Dismissed" && task.document.date >= today).map((task) => <div className="row line" key={task.id}>
+                <p>{task.document.title}</p><Button tone="ghost" onClick={() => store.put("task", { ...task.document, status: "Open" }, task.id)}>Restore task</Button>
+              </div>)}
+            </details>}
           </section>
         </div>
       </div>

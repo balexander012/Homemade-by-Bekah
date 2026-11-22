@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { BookOpen, Plus, Star } from "lucide-react";
 import { activeVersions, blankRecipe, categories, canBake, formatAmount, recipeStatuses, scale, type Recipe, type Version } from "@/lib/domain";
+import { readRecipeFile, sourceFileTypes } from "@/lib/read-recipe-file";
 import { parseRecipeImport } from "@/lib/recipe-import";
 import { defaultPolicies } from "@/lib/sample";
 import { recordsOf } from "@/lib/store";
@@ -122,6 +123,7 @@ export function RecipeEditor({ store, version, initialName, complete, cancel }: 
   const [recipe, setRecipe] = useState<Recipe>(() => version ? { ...version.document, status: "Draft", changeReason: "" } : blankRecipe(initialName));
   const [paste, setPaste] = useState("");
   const [website, setWebsite] = useState("");
+  const [progress, setProgress] = useState("");
   const [imported, setImported] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
@@ -137,10 +139,15 @@ export function RecipeEditor({ store, version, initialName, complete, cancel }: 
     });
   }
   async function importFile(file: File | undefined) {
-    if (!file) return;
+    if (!file || importing) return;
     setError("");
-    if (file.size > 1024 * 1024 || !/\.(txt|md|csv|json|html?)$/i.test(file.name)) return setError("Choose a text, Markdown, CSV, JSON, or HTML file up to 1 MB.");
-    try { setPaste(await file.text()); } catch { setError("Could not read this file."); }
+    setImporting(true);
+    setProgress("Reading source file…");
+    try {
+      setPaste(await readRecipeFile(file, setProgress));
+      if (!recipe.source) patch({ source: file.name });
+    } catch (cause) { setError(message(cause)); }
+    finally { setImporting(false); setProgress(""); }
   }
   return <><Heading title={version ? "New recipe revision" : "New recipe"} />
     <form className="stack" onSubmit={submit}>
@@ -160,9 +167,10 @@ export function RecipeEditor({ store, version, initialName, complete, cancel }: 
           <summary>Import source text</summary>
           <div className="stack">
             <Field label="Paste recipe or transcript"><textarea value={paste} onChange={(event) => setPaste(event.target.value)} /></Field>
-            <Field label="Upload text or HTML file"><input type="file" accept=".txt,.md,.csv,.json,.html,.htm,text/plain" onChange={(event) => void importFile(event.target.files?.[0])} /></Field>
+            <Field label="Upload a document or screenshot"><input type="file" accept={sourceFileTypes} disabled={importing} onChange={(event) => void importFile(event.target.files?.[0])} /></Field>
+            {progress && <p role="status">{progress}</p>}
             <div className="actions">
-              <Button tone="secondary" disabled={!paste.trim()} onClick={() => {
+              <Button tone="secondary" disabled={!paste.trim() || importing} onClick={() => {
                 setError("");
                 const found = parseRecipeImport(paste, recipe.source);
                 if (found) { setRecipe(found); setImported(true); }
@@ -177,7 +185,7 @@ export function RecipeEditor({ store, version, initialName, complete, cancel }: 
               catch (cause) { setError(message(cause)); }
               finally { setImporting(false); }
             }}>{importing ? "Reading website…" : "Review website recipe"}</Button>
-            <p className="muted">Review the source and enter verified measurements and instructions below. For screenshots and videos, paste text or a transcript.</p>
+            <p className="muted">Review the source and enter verified measurements and instructions below. Check measurements from screenshots carefully. For videos, paste a transcript.</p>
           </div>
         </details>
       </section>

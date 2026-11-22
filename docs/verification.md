@@ -4,7 +4,7 @@
 
 Run `npm run typecheck`, `npm test`, `npm run build` and `npm run test:e2e`. GitHub Actions runs the same checks.
 
-The local browser suite uses Chromium at iPad landscape and iPhone dimensions. It exercises a three-recipe plan, rescheduling, scaled steps, timer recovery on offline reload, the photo checklist, feedback, and draft revision preservation. The migration suite verifies access controls in PostgreSQL with test Auth and Storage schemas. The MCP route suite runs the real protocol handler with verified-claim and Supabase response fixtures.
+The local browser suite uses Chromium at iPad landscape and iPhone dimensions. It exercises a three-recipe plan, rescheduling, scaled steps, timer recovery on offline reload, the photo checklist, feedback, draft revision preservation, and recipe imports from Word, PDF, and screenshots. The migration suite verifies access controls in PostgreSQL with test Auth and Storage schemas. The MCP route suite runs the real protocol handler with verified-claim and Supabase response fixtures.
 
 ## Staging acceptance
 
@@ -19,7 +19,7 @@ Use a staging Supabase project and the HTTPS preview described in [Deployment](d
 
 ## Feature limits
 
-Imported website recipes use structured recipe metadata. HTML, text and JSON files can be reviewed in the recipe editor. Screenshot OCR, binary document and video extraction use the manual text or transcript fallback. No image or recipe extraction is assumed accurate without review.
+Imported website recipes use structured recipe metadata. HTML, text, JSON, Word and text-based PDF files open for review in the recipe editor. The browser reads screenshots locally with English OCR. Scanned PDFs can be imported as screenshots, and videos can be imported as transcripts. Verify that each extracted amount and step matches the original source.
 
 Smart Baking orders eligible steps across recipes and reserves the oven for one timed batch at a time until that step is checked off. Equipment, tray capacity and other resources can be coordinated using the preparation list and oven notes. Tray packing and concurrent use of multiple ovens are not optimized automatically.
 

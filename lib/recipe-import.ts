@@ -62,8 +62,23 @@ function instructions(value: unknown, depth = 0): string[] {
   return instructions(row.itemListElement ?? row.text, depth + 1);
 }
 
+function textRecipe(raw: string): Record<string, unknown> | null {
+  const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const heading = (line: string) => line.replace(/^[#*\s]+|[:*\s]+$/g, "").toLowerCase();
+  const ingredientsAt = lines.findIndex((line) => /^ingredients?$/.test(heading(line)));
+  const methodAt = lines.findIndex((line, index) => index > ingredientsAt && /^(instructions?|directions?|method|steps)$/.test(heading(line)));
+  if (ingredientsAt < 1 || methodAt < ingredientsAt + 2 || methodAt === lines.length - 1) return null;
+  const name = lines[0].replace(/^[#*\s]+|[*\s]+$/g, "");
+  const yieldText = lines.slice(1, ingredientsAt).find((line) => /^(yield|makes|servings?)\s*:/i.test(line));
+  return {
+    "@type": "Recipe", name, recipeYield: yieldText?.slice(yieldText.indexOf(":") + 1).trim(),
+    recipeIngredient: lines.slice(ingredientsAt + 1, methodAt).map((line) => line.replace(/^[-*•]\s+/, "")),
+    recipeInstructions: lines.slice(methodAt + 1).map((line) => line.replace(/^(?:\d+[.)]|[-*•])\s+/, "")),
+  };
+}
+
 export function parseRecipeImport(raw: string, attribution = ""): Recipe | null {
-  for (const value of parseDocuments(raw)) {
+  for (const value of [...parseDocuments(raw), textRecipe(raw)]) {
     const supplied = object(value);
     if (supplied) {
       const draft = recipeSchema.safeParse({ ...supplied, status: "Draft" });

@@ -97,3 +97,36 @@ test("keeps an approved recipe while a new draft is being developed", async ({ p
   await expect(page.getByRole("heading", { name: "Test espresso cookies", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Test espresso cookies revision", exact: true })).toHaveCount(0);
 });
+
+test("reviews recipe text extracted from Word, PDF and a screenshot", async ({ page }) => {
+  test.setTimeout(90000);
+  await page.goto("/");
+  await navigation(page, "Recipes").click();
+  await page.getByRole("button", { name: "New recipe" }).click();
+  await page.getByText("Import source text").click();
+  const input = page.getByLabel("Upload a document or screenshot");
+  const paste = page.getByLabel("Paste recipe or transcript");
+  await input.setInputFiles("tests/fixtures/test-recipe.docx");
+  await expect(paste).toHaveValue(/240 g unsalted butter/i);
+  await page.getByRole("button", { name: "Review pasted source" }).click();
+  await expect(page.getByLabel("Recipe name")).toHaveValue("Test shortbread");
+  await expect(page.getByLabel("Quantity", { exact: true })).toHaveValue("240");
+  await input.setInputFiles("tests/fixtures/test-recipe.pdf");
+  await expect(paste).toHaveValue(/240 g unsalted butter/i);
+  const png = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1000;
+    canvas.height = 260;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "black";
+    ctx.font = "48px Arial";
+    ctx.fillText("240 g unsalted butter", 40, 100);
+    ctx.fillText("Mix the butter until smooth.", 40, 180);
+    return canvas.toDataURL().split(",")[1];
+  });
+  await paste.clear();
+  await input.setInputFiles({ name: "recipe.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
+  await expect(paste).toHaveValue(/240 g unsalted butter/i, { timeout: 55000 });
+});
