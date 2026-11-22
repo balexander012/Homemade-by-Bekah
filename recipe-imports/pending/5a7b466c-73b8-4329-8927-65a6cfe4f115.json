@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 1,
+  "kind": "recipe",
+  "importId": "5a7b466c-73b8-4329-8927-65a6cfe4f115",
+  "recipeKey": "jumbo-chocolate-chip-cookies",
+  "aliases": [
+    "Bekah's Jumbo Chocolate Chip Cookies"
+  ],
+  "verification": "Finalized",
+  "sourceReferences": [
+    "Bekah Baking ChatGPT Project, user-supplied 'Bekah's Jumbo Chocolate Chip Cookies', finalized production recipe pasted 2026-11-22 at 22:25 UTC. All ingredient amounts, 11 numbered steps, yield, portion size, oven, timing, production cost and price originate from this message.",
+    "Original recipe attribution stated by user: Adapted from Butternut Bakery chocolate chip cookie recipe, with tested portion size, sea salt substitution, and baking time.",
+    "Bekah Baking chat, 2026-11-22 23:41 UTC: user explicitly requested publishing the correct six-cookie chocolate chip recipe through the new direct-publish workflow. Exact ingredient amounts, six 98 g portions and original source preserved."
+  ],
+  "issues": [
+    "Reconcile stated dough mass before approving as a mathematically consistent production specification: 6 portions x 98 g = 588 g, but butter (112 g) + brown sugar (100 g) + cane sugar (75 g) + flour (165 g) + chocolate chips (240 g) already total 692 g, excluding the egg, vanilla, leavening and salt. The source explicitly says six 98 g cookies were tested; its quantities and portion size are retained unchanged."
+  ],
+  "recipe": {
+    "name": "Bekah's Jumbo Chocolate Chip Cookies",
+    "category": "Cookies",
+    "description": "Finalized production version provided by Bekah: 6 jumbo cookies, 98 g dough per cookie, baked 350°F for 18 minutes. Ingredient-weight discrepancy flagged for review.",
+    "source": "User-provided finalized Bekah's Jumbo Chocolate Chip Cookies production recipe, Bekah Baking ChatGPT Project, 2026-11-22. Origin: adapted from Butternut Bakery chocolate chip cookies.",
+    "tags": [
+      "jumbo",
+      "chocolate chip"
+    ],
+    "yieldLow": 6,
+    "yieldUnit": "jumbo cookies",
+    "status": "Draft",
+    "ingredients": [
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000001",
+        "name": "Unsalted butter",
+        "quantity": 112,
+        "unit": "g",
+        "preparation": "1/2 cup; melted and cooled"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000002",
+        "name": "Light brown sugar",
+        "quantity": 100,
+        "unit": "g",
+        "preparation": "1/2 cup; packed"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000003",
+        "name": "Granulated cane sugar",
+        "quantity": 75,
+        "unit": "g",
+        "preparation": "1/3 cup"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000004",
+        "name": "Pure vanilla extract",
+        "quantity": 2,
+        "unit": "tsp",
+        "preparation": ""
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000005",
+        "name": "Large egg",
+        "quantity": 1,
+        "unit": "each",
+        "preparation": ""
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000006",
+        "name": "Baking soda",
+        "quantity": 0.5,
+        "unit": "tsp",
+        "preparation": ""
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000007",
+        "name": "Baking powder",
+        "quantity": 0.5,
+        "unit": "tsp",
+        "preparation": ""
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000008",
+        "name": "Fine ground sea salt",
+        "quantity": 0.5,
+        "unit": "tsp",
+        "preparation": ""
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000009",
+        "name": "All-purpose flour",
+        "quantity": 165,
+        "unit": "g",
+        "preparation": "1 1/4 cups"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-00000000000a",
+        "name": "Semisweet chocolate chips",
+        "quantity": 240,
+        "unit": "g",
+        "preparation": "1 1/2 cups"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-00000000000b",
+        "name": "Flaky sea salt",
+        "quantity": 1,
+        "unit": "small pinch per cookie",
+        "preparation": "Optional topping; small pinch per cookie immediately after baking"
+      }
+    ],
+    "steps": [
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000065",
+        "instruction": "Preheat oven to 350°F. Line a baking sheet with parchment paper. Plan for 4 cookies per sheet to allow adequate spreading.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000066",
+        "instruction": "Melt 1/2 cup (112 g) unsalted butter. Allow it to cool slightly so it is warm but not hot.",
+        "ingredients": [
+          "d9e6bcf7-84d0-4f95-8dc1-000000000001"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000067",
+        "instruction": "In a large mixing bowl, combine 1/2 cup (112 g) melted butter, 1/2 cup (100 g) packed light brown sugar, and 1/3 cup (75 g) granulated cane sugar. Whisk vigorously for 1 minute until smooth and well combined.",
+        "ingredients": [
+          "d9e6bcf7-84d0-4f95-8dc1-000000000001",
+          "d9e6bcf7-84d0-4f95-8dc1-000000000002",
+          "d9e6bcf7-84d0-4f95-8dc1-000000000003"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000068",
+        "instruction": "Add 1 large egg and 2 tsp pure vanilla extract. Whisk until fully incorporated and smooth.",
+        "ingredients": [
+          "d9e6bcf7-84d0-4f95-8dc1-000000000005",
+          "d9e6bcf7-84d0-4f95-8dc1-000000000004"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-000000000069",
+        "instruction": "Mix in 1/2 tsp baking soda, 1/2 tsp baking powder, and 1/2 tsp finely ground sea salt. Stir until evenly incorporated.",
+        "ingredients": [
+          "d9e6bcf7-84d0-4f95-8dc1-000000000006",
+          "d9e6bcf7-84d0-4f95-8dc1-000000000007",
+          "d9e6bcf7-84d0-4f95-8dc1-000000000008"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-00000000006a",
+        "instruction": "Fold in 1 1/4 cups (165 g) all-purpose flour. Mix gently until no dry flour remains. Do not overmix.",
+        "ingredients": [
+          "d9e6bcf7-84d0-4f95-8dc1-000000000009"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-00000000006b",
+        "instruction": "Fold in 1 1/2 cups (240 g) semisweet chocolate chips. Mix until evenly distributed throughout the dough.",
+        "ingredients": [
+          "d9e6bcf7-84d0-4f95-8dc1-00000000000a"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-00000000006c",
+        "instruction": "Using a 6-tablespoon cookie scoop, portion the dough into 6 cookies weighing approximately 98 g each. Keep the portions rounded and place them approximately 3 inches apart.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-00000000006d",
+        "instruction": "Bake at 350°F for 18 minutes. This is your tested baking time. The cookies should have golden brown edges and slightly soft centers.",
+        "ingredients": [],
+        "kind": "Oven",
+        "minutes": 18,
+        "temperature": 350
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-00000000006e",
+        "instruction": "Immediately after removing the cookies from the oven, sprinkle with a small pinch of flaky sea salt, if desired. For more consistent presentation, gently round the edges with a large circular cookie cutter while the cookies are still warm.",
+        "ingredients": [
+          "d9e6bcf7-84d0-4f95-8dc1-00000000000b"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "d9e6bcf7-84d0-4f95-8dc1-00000000006f",
+        "instruction": "Allow cookies to cool on the baking sheet for 10 minutes. Transfer to a wire rack and cool completely before packaging.",
+        "ingredients": [],
+        "kind": "Cool",
+        "minutes": 10
+      }
+    ],
+    "equipment": [
+      "Baking sheet",
+      "Parchment paper",
+      "Large mixing bowl",
+      "Whisk",
+      "6-tablespoon cookie scoop",
+      "Large circular cookie cutter (optional)",
+      "Wire cooling rack"
+    ],
+    "prep": [],
+    "storage": "Allow cookies to cool completely before packaging.",
+    "freezer": "",
+    "notes": "Finalized production specifications from the 2026-11-22 user-provided recipe: 6 jumbo cookies, 98 g dough each, 350°F, 15-minute preparation, 18-minute bake, 10-minute pan cooling. Estimated ingredient cost: $0.82 per cookie. Minimum customer order: 6 cookies. Starting selling price: $19 per 6-pack. The latest batch reportedly produced six 98 g cookies with the desired results at 18 minutes. Chilling dough is an optional future test, not included in this finalized version. User instructs keeping the recipe unchanged for consistency. Listed ingredient masses do not reconcile to six 98 g portions (see issues); no values changed.",
+    "changeReason": "Attempt to publish Bekah's original six-cookie 98 g jumbo chocolate chip version through the newly available publish workflow. Weight discrepancy is preserved and must block publication pending confirmation; no ingredient or yield values altered.",
+    "exceptions": [],
+    "shots": []
+  },
+  "publicationIntent": "publish",
+  "portionWeightGrams": 98
+}
