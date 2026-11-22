@@ -84,9 +84,10 @@ test("uses real brand assets, persists theme and keeps the viewport free of hori
 test("keeps an approved recipe while a new draft is being developed", async ({ page }) => {
   await page.goto("/");
   await createRecipe(page, "Test espresso cookies", "Tested");
-  await page.getByRole("button", { name: "Approve new version" }).click();
-  await page.getByRole("button", { name: "Confirm approval" }).click();
-  await expect(page.getByText("Approved", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Make preferred version" }).click();
+  await page.getByRole("button", { name: "Make preferred", exact: true }).click();
+  await expect(page.getByText("Preferred", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Tested", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "New revision" }).click();
   await page.getByLabel("Recipe name").fill("Test espresso cookies revision");
   await page.getByLabel("Reason for revision").fill("Try real brewed espresso.");
@@ -129,4 +130,17 @@ test("reviews recipe text extracted from Word, PDF and a screenshot", async ({ p
   await paste.clear();
   await input.setInputFiles({ name: "recipe.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
   await expect(paste).toHaveValue(/240 g unsalted butter/i, { timeout: 55000 });
+});
+
+test("makes an untested, finalized recipe preferred without calling it tested", async ({ page }) => {
+  await page.goto("/");
+  await createRecipe(page, "Test finalized rolls", "Ready for Testing");
+  await page.getByRole("button", { name: "Make preferred version" }).click();
+  await expect(page.getByText("This version has not been tested yet.", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Make preferred", exact: true }).click();
+  await expect(page.getByText("Preferred", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Ready for Testing", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Tested", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Start baking" }).first().click();
+  await expect(page.getByText("Test finalized rolls").first()).toBeVisible();
 });

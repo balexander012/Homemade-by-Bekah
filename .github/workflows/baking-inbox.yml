@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           # Execute the reviewed importer even when a writer can change inbox content.
-          ref: 88eaa1e1834d60c74d9e9ed43127d5127c90b4b7
+          ref: 0545e43bf12be8e9b37e4a0059749a3a6095735a
           persist-credentials: false
           path: runner
       - uses: actions/setup-node@v4
@@ -98,7 +98,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           # Execute the reviewed importer even when a writer can change inbox content.
-          ref: 88eaa1e1834d60c74d9e9ed43127d5127c90b4b7
+          ref: 0545e43bf12be8e9b37e4a0059749a3a6095735a
           persist-credentials: false
           path: runner
       - uses: actions/setup-node@v4
