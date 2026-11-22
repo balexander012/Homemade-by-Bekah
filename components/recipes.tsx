@@ -9,6 +9,7 @@ import { defaultPolicies } from "@/lib/sample";
 import { recordsOf } from "@/lib/store";
 import type { WorkspaceStore } from "@/lib/use-workspace";
 import { Button, Field, Heading, Status, message } from "./ui";
+import { RecipeReview } from "./recipe-review";
 
 const split = (text: string) => text.split(",").map((item) => item.trim()).filter(Boolean);
 const number = (text: string) => text === "" ? undefined : Number(text);
@@ -17,13 +18,15 @@ export function Recipes({ store, show, edit }: { store: WorkspaceStore; show: (i
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [favorites, setFavorites] = useState(false);
-  const versions = activeVersions(store.library);
+  const [rejected, setRejected] = useState<string[]>([]);
+  const versions = activeVersions({ ...store.library, versions: store.library.versions.filter((version) => !rejected.includes(version.id)) });
   const matches = versions.filter(({ recipe_id, document }) =>
     (!favorites || store.library.favorites.includes(recipe_id)) && (!category || document.category === category) &&
     [document.name, document.category, document.description, ...document.tags].join(" ").toLowerCase().includes(query.trim().toLowerCase()));
   return <>
     <Heading title="Recipes"><Button onClick={edit}><Plus size={20} /> New recipe</Button></Heading>
     <div className="stack">
+      <RecipeReview store={store} show={show} onRejected={setRejected} />
       <div className="actions">
         <Field label="Search recipes"><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} /></Field>
         <Field label="Category"><select value={category} onChange={(event) => setCategory(event.target.value)}>
