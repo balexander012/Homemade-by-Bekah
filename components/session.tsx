@@ -8,9 +8,15 @@ import { taskId } from "@/lib/plan";
 import { RecipePicker } from "./planner";
 import { Button, Field, Heading, Status, message } from "./ui";
 
-export function StartSession({ date, event, initialVersion, store, close, started }: {
+const modeHelp: Record<string, string> = {
+  "Sequential": "One recipe at a time. Best for new or tricky recipes.",
+  "Smart Baking": "Suggests the next task while doughs chill and ovens heat.",
+  "Side-by-Side": "Two or three recipes on screen at once.",
+};
+
+export function StartSession({ date, event, initialVersion, store, close, started, browse }: {
   date: string; event?: Entry<"event">; initialVersion?: string; store: WorkspaceStore;
-  close: () => void; started: (id: string) => void;
+  close: () => void; started: (id: string) => void; browse?: () => void;
 }) {
   const all = store.library.versions;
   const valid = (version: Version) => canBake(version.document) && ["Ready for Testing", "Tested"].includes(version.document.status);
@@ -32,15 +38,23 @@ export function StartSession({ date, event, initialVersion, store, close, starte
       started(store.put("session", { ...newSession(title, date, selection, event?.id), mode }, id, true));
     } catch (cause) { setError(message(cause)); setBusy(false); }
   }}>
-    <section className="panel stack">
-      <Field label="Session name"><input required value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
-      <Field label="Baking mode"><select value={mode} onChange={(e) => setMode(e.target.value as typeof mode)}>{modes.map((name) => <option key={name}>{name}</option>)}</select></Field>
-      {skipped.length > 0 && <p className="warning">Some scheduled recipes still need verified measurements or instructions.</p>}
-      {!versions.length && <p className="muted">Set a verified recipe to Ready for Testing to use it in a session.</p>}
-      <RecipePicker versions={versions} selected={selection} onChange={setSelection} />
+    {skipped.length > 0 && <p className="notice warning">Some scheduled recipes still need verified measurements or instructions.</p>}
+    <section className="panel">
+      <RecipePicker versions={versions} selected={selection} onChange={setSelection} empty={<div className="empty-state tinted" style={{ borderRadius: "var(--radius-lg)" }}>
+        <h3 className="display" style={{ fontSize: "1.5rem", fontWeight: 400 }}>No recipes are ready to bake yet</h3>
+        <p className="muted">A recipe needs verified ingredients and steps, and the status Ready for Testing or Tested, before it can be baked here.</p>
+        {browse && <Button onClick={browse}>Review recipes</Button>}
+      </div>} />
+    </section>
+    <section className="panel stack"><h2>How do you want to bake?</h2>
+      <fieldset className="mode-cards"><legend className="sr-only">Baking mode</legend>{modes.map((name) =>
+        <label key={name}><input type="radio" name="mode" value={name} checked={mode === name} onChange={() => setMode(name)} />
+          <strong>{name}</strong><span className="muted">{modeHelp[name]}</span></label>)}</fieldset>
+      <details><summary>Session details</summary><Field label="Session name"><input required value={title} onChange={(e) => setTitle(e.target.value)} /></Field></details>
     </section>
     {error && <p className="notice error" role="alert">{error}</p>}
-    <div className="actions"><Button type="submit" disabled={busy || !selection.length}>Begin session</Button><Button tone="ghost" onClick={close}>Cancel</Button></div>
+    <div className="sticky-actions">{!selection.length && versions.length > 0 && <span className="muted">Choose at least one recipe.</span>}
+      <Button tone="ghost" onClick={close}>Cancel</Button><Button type="submit" disabled={busy || !selection.length}>Begin session</Button></div>
   </form></>;
 }
 

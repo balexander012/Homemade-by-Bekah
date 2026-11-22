@@ -133,15 +133,15 @@ export function RecipeReview({ store, show, onRejected }: {
     } finally { setBusy(undefined); }
   }
 
-  return <section className="stack" aria-label="Recipes to review">
-    <div className="line"><h2>Recipes to review</h2>
-      {entries.length > queue.length && <Button tone="ghost" onClick={() => setExpanded(!expanded)}>{expanded ? "Show pending" : "Show import history"}</Button>}
-    </div>
+  if (!visible.length && entries.length <= queue.length && !error) return null;
+  return <section className="panel" aria-label="Recipes to review"><details className="stack" open={Boolean(error)}>
+    <summary><h2>Recipes to review{visible.length ? ` · ${visible.length}` : ""}</h2></summary>
+    {entries.length > queue.length && <div className="line"><Button tone="ghost" onClick={() => setExpanded(!expanded)}>{expanded ? "Show pending" : "Show import history"}</Button></div>}
     {error && <p className="notice error" role="alert">{error}</p>}
-    {!visible.length && <p className="muted">Recipe drafts sent from ChatGPT appear here.</p>}
+    {!visible.length && <p className="muted">No recipe drafts from ChatGPT are waiting.</p>}
     {visible.map((entry) => <ReviewCard key={entry.id} entry={entry} busy={Boolean(busy)} show={show}
       previous={store.library.versions.find((version) => version.id === entry.previous_version_id)}
       stale={(entry.recipe_id ? store.library.approvals[entry.recipe_id] ?? null : null) !== entry.baseline_approval_id}
       decide={(decision) => decide(entry, decision)} />)}
-  </section>;
+  </details></section>;
 }

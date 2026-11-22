@@ -43,7 +43,7 @@ test("plans and reschedules batches, then resumes state and timers after an offl
   await page.getByRole("button", { name: "Save event" }).click();
   await expect(page.getByRole("heading", { name: "Friday cookie test" })).toHaveCount(1);
   await page.getByRole("heading", { name: "Friday cookie test", exact: true }).locator("..").getByRole("button", { name: "Start baking" }).click();
-  await page.getByRole("combobox", { name: "Baking mode", exact: true }).selectOption("Smart Baking");
+  await page.getByRole("radio", { name: /^Smart Baking/ }).check();
   await page.getByRole("button", { name: "Begin session" }).click();
   await expect(page.getByText("50 g", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Complete step" }).click();

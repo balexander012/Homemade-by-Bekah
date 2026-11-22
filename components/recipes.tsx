@@ -14,33 +14,51 @@ import { RecipeReview } from "./recipe-review";
 const split = (text: string) => text.split(",").map((item) => item.trim()).filter(Boolean);
 const number = (text: string) => text === "" ? undefined : Number(text);
 
+const filters = ["All", "Ready to bake", "Drafts", "Ideas", "Archived"] as const;
+function filterMatch(filter: typeof filters[number], status: string, approved: boolean) {
+  if (filter === "All") return status !== "Archived";
+  if (filter === "Ready to bake") return approved || status === "Ready for Testing" || status === "Tested";
+  if (filter === "Drafts") return status === "Draft";
+  if (filter === "Ideas") return status === "Idea";
+  return status === "Archived";
+}
+
 export function Recipes({ store, show, edit }: { store: WorkspaceStore; show: (id: string) => void; edit: () => void }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [favorites, setFavorites] = useState(false);
+  const [filter, setFilter] = useState<typeof filters[number]>("All");
   const [rejected, setRejected] = useState<string[]>([]);
   const versions = activeVersions({ ...store.library, versions: store.library.versions.filter((version) => !rejected.includes(version.id)) });
-  const matches = versions.filter(({ recipe_id, document }) =>
-    (!favorites || store.library.favorites.includes(recipe_id)) && (!category || document.category === category) &&
-    [document.name, document.category, document.description, ...document.tags].join(" ").toLowerCase().includes(query.trim().toLowerCase()));
+  const isApproved = (version: Version) => store.library.approvals[version.recipe_id] === version.id;
+  const matches = versions.filter((version) => {
+    const { recipe_id, document } = version;
+    return filterMatch(filter, document.status, isApproved(version)) &&
+      (!favorites || store.library.favorites.includes(recipe_id)) && (!category || document.category === category) &&
+      [document.name, document.category, document.description, ...document.tags].join(" ").toLowerCase().includes(query.trim().toLowerCase());
+  });
   return <>
     <Heading title="Recipes"><Button onClick={edit}><Plus size={20} /> New recipe</Button></Heading>
     <div className="stack">
       <RecipeReview store={store} show={show} onRejected={setRejected} />
-      <div className="actions">
-        <Field label="Search recipes"><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} /></Field>
+      <div className="toolbar">
+        <Field label="Search recipes"><input type="search" placeholder="Name, ingredient or tag" value={query} onChange={(event) => setQuery(event.target.value)} /></Field>
         <Field label="Category"><select value={category} onChange={(event) => setCategory(event.target.value)}>
           <option value="">All categories</option>{[...new Set([...categories, ...versions.map(({ document }) => document.category)])].map((name) => <option key={name}>{name}</option>)}
         </select></Field>
-        <label className="check"><input type="checkbox" checked={favorites} onChange={(event) => setFavorites(event.target.checked)} /><span>Favorites</span></label>
       </div>
-      {matches.length === 0 && <section className="panel stack"><BookOpen /><h2>{versions.length ? "No matching recipes" : "Start your recipe library"}</h2><p className="muted">{versions.length ? "Try a different search or category." : "Save a recipe you make often or start a draft from your notes."}</p></section>}
-      <div className="tiles">{matches.map((version) => <article className="panel stack compact" key={version.id}>
-        <p className="eyebrow">{version.document.category}</p>
-        <h2>{version.document.name}</h2>
-        <div className="line"><Status>{store.library.approvals[version.recipe_id] === version.id ? "Approved" : version.document.status}</Status>{store.library.favorites.includes(version.recipe_id) && <Star aria-label="Favorite" size={19} />}</div>
-        <p className="muted">{version.document.yieldLow ? `Yield ${version.document.yieldLow}${version.document.yieldHigh ? `–${version.document.yieldHigh}` : ""} ${version.document.yieldUnit}` : "Yield to verify"}</p>
-        <Button tone="secondary" onClick={() => show(version.id)}>Open recipe</Button>
+      <div className="chips" role="group" aria-label="Recipe filters">
+        {filters.map((name) => <button type="button" className="chip" key={name} aria-pressed={filter === name} onClick={() => setFilter(name)}>{name}</button>)}
+        <button type="button" className="chip" aria-pressed={favorites} onClick={() => setFavorites(!favorites)}><Star size={16} className="inline mr-1" aria-hidden="true" />Favorites</button>
+      </div>
+      {matches.length === 0 && <section className="panel empty-state"><BookOpen aria-hidden="true" /><h2 className="display">{versions.length ? "No matching recipes" : "Start your recipe library"}</h2><p className="muted">{versions.length ? "Try a different filter, search or category." : "Save a recipe you make often or start a draft from your notes."}</p></section>}
+      <div className="recipe-grid">{matches.map((version) => <article className="panel recipe-card" key={version.id}>
+        <div className="recipe-thumb" aria-hidden="true"><BookOpen size={26} />{version.document.category}</div>
+        <div className="body">
+          <h2><button type="button" onClick={() => show(version.id)}>{version.document.name}</button></h2>
+          <div className="line"><Status>{isApproved(version) ? "Approved" : version.document.status}</Status>{store.library.favorites.includes(version.recipe_id) && <Star aria-label="Favorite" size={19} />}</div>
+          <p className="muted">{version.document.yieldLow ? `Makes ${version.document.yieldLow}${version.document.yieldHigh ? `–${version.document.yieldHigh}` : ""} ${version.document.yieldUnit}` : "Yield to verify"}</p>
+        </div>
       </article>)}</div>
     </div>
   </>;

@@ -33,7 +33,7 @@ export function More({ store, theme, setTheme, signOut, demo, createRecipe, sche
   };
   const patch = (partial: Partial<Doc<"idea">>) => { if (editor) setEditor({ ...editor, document: { ...editor.document, ...partial } }); };
   return <><Heading title="More" /><div className="stack">
-    <section className="panel stack"><div className="line"><h2>Recipe ideas</h2><Button onClick={() => save()}>Add idea</Button></div>
+    <section className="panel stack"><div className="panel-head"><div><h2>Recipe ideas</h2><p className="muted" style={{ margin: 0 }}>Products to try, even before there is a recipe.</p></div><Button onClick={() => save()}>Add idea</Button></div>
       {editor && <form className="row stack" onSubmit={async (e) => {
         e.preventDefault();
         if (busy) return;
@@ -63,7 +63,7 @@ export function More({ store, theme, setTheme, signOut, demo, createRecipe, sche
         {error && <p role="alert" className="notice error">{error}</p>}
         <div className="actions"><Button type="submit" disabled={busy || Boolean(image && !store.online)}>Save idea</Button><Button tone="ghost" onClick={() => setEditor(undefined)}>Cancel</Button></div>
       </form>}
-      {!ideas.length && <p className="muted">Save products you want to try, even before you have a recipe.</p>}
+      {!ideas.length && !editor && <p className="muted">No ideas saved yet.</p>}
       {ideas.map((idea) => <details className="row" key={idea.id}><summary>{idea.document.name} · {idea.document.status}</summary><div className="stack">
         {idea.document.description && <p>{idea.document.description}</p>}{idea.document.notes && <p>{idea.document.notes}</p>}
         {client && idea.document.image && <div className="max-w-sm"><Photo client={client} alt={idea.document.name} path={idea.document.image} /></div>}
@@ -101,7 +101,7 @@ export function More({ store, theme, setTheme, signOut, demo, createRecipe, sche
       {!demo && (confirm ? <div className="stack">
         <p>{Object.keys(store.queue).length > 0 ? "This device has unsynced changes. Sync first to keep them, or sign out and remove the device copy." : "Signing out clears the kitchen data saved on this device."}</p>
         <div className="actions"><Button onClick={signOut}>Confirm sign out</Button><Button tone="secondary" onClick={() => void store.sync()}>Sync now</Button><Button tone="ghost" onClick={() => setConfirm(false)}>Stay signed in</Button></div>
-      </div> : <Button tone="secondary" onClick={() => setConfirm(true)}>Sign out</Button>)}
+      </div> : <div><Button tone="ghost" onClick={() => setConfirm(true)}>Sign out</Button></div>)}
     </section>
   </div></>;
 }

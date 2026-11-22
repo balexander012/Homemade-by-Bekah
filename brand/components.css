@@ -77,3 +77,42 @@
 .hb-check[aria-checked="true"]::after { content: ""; width: 12px; height: 22px; border: solid var(--on-brand); border-width: 0 4px 4px 0; transform: rotate(45deg) translate(-2px, -2px); }
 .hb-ing--done .hb-ing__name, .hb-ing--done .hb-ing__qty { color: var(--ink-600); text-decoration: line-through; text-decoration-thickness: 2px; }
 .hb-timer { font: 600 64px/1 var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+
+/* App: navigation (5 destinations + Start Baking) */
+.hb-tabbar { display: flex; align-items: stretch; gap: var(--space-2); padding: var(--space-2); background: var(--surface); border-top: 1px solid var(--border); }
+.hb-tab { flex: 1; min-height: var(--touch-app); border-radius: var(--radius-lg); display: grid; place-items: center; font: 600 15px/1 var(--font-body); color: var(--text-primary); text-decoration: none; }
+.hb-tab[aria-current="page"] { background: var(--background-sage); color: var(--brand-primary-strong); box-shadow: inset 0 -3px 0 var(--brand-primary); }
+.hb-start { flex: 1.4; background: var(--brand-primary); color: var(--on-brand); border-radius: var(--radius-lg); font: 700 18px/1 var(--font-body); display: grid; place-items: center; min-height: var(--touch-app); text-decoration: none; }
+
+/* Flags and alerts: always icon shape + title + reason + action */
+.hb-flag { display: grid; grid-template-columns: 28px 1fr auto; gap: var(--space-3); align-items: start; padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); border: 1.5px solid currentColor; background: var(--surface); }
+.hb-flag__icon { width: 28px; height: 28px; border-radius: 50%; background: currentColor; display: grid; place-items: center; }
+.hb-flag__icon::after { content: "!"; color: var(--surface); font: 800 17px/1 var(--font-body); }
+.hb-flag--info .hb-flag__icon::after { content: "i"; }
+.hb-flag__title { font: 600 18px/24px var(--font-body); color: var(--text-primary); }
+.hb-flag__body { font: 400 16px/22px var(--font-body); color: var(--text-secondary); }
+.hb-flag--warn { color: var(--status-warn); } .hb-flag--danger { color: var(--status-danger); } .hb-flag--info { color: var(--status-info); }
+
+/* Sync indicator (offline-first) */
+.hb-sync { display: inline-flex; align-items: center; gap: 8px; font: 600 14px/1 var(--font-body); color: var(--text-secondary); }
+.hb-sync::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--status-ready); }
+.hb-sync--pending::before { background: var(--status-warn); }
+.hb-sync--offline::before { background: transparent; border: 2px solid var(--text-secondary); }
+.hb-sync--conflict::before { background: var(--status-danger); border-radius: 2px; transform: rotate(45deg); }
+
+/* Recipe / idea / shot status: neutral pill with a word; color only on the dot */
+.hb-pill { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--radius-full); background: var(--background-warm); color: var(--text-primary); font: 600 14px/1 var(--font-body); }
+.hb-pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--pill, var(--text-secondary)); }
+.hb-pill--idea { --pill: var(--text-secondary); } .hb-pill--draft { --pill: var(--status-info); } .hb-pill--testing { --pill: var(--status-warn); }
+.hb-pill--tested { --pill: var(--brand-secondary); } .hb-pill--approved { --pill: var(--status-ready); background: var(--background-sage); } .hb-pill--archived { --pill: var(--border); color: var(--text-secondary); }
+.hb-pill--retake { --pill: var(--status-danger); }
+
+/* Calendar event */
+.hb-event { display: grid; gap: 2px; padding: 8px 10px 8px 14px; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--border); box-shadow: inset 4px 0 0 var(--cat, var(--brand-primary)); font: 400 14px/18px var(--font-body); }
+.hb-event b { font-weight: 600; font-size: 15px; }
+.hb-event--draft { border-style: dashed; background: transparent; }
+
+/* Rating (review after a session) */
+.hb-rating { display: flex; gap: var(--space-2); }
+.hb-rating button { width: var(--touch-app); height: var(--touch-app); border-radius: var(--radius-lg); border: 1.5px solid var(--text-secondary); background: var(--surface); font: 700 22px/1 var(--font-body); color: var(--text-primary); }
+.hb-rating button[aria-pressed="true"] { background: var(--brand-primary); border-color: var(--brand-primary); color: var(--on-brand); }

@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { BookOpen, CalendarDays, Camera, Ellipsis, LayoutDashboard } from "lucide-react";
 import type { Session as AuthSession, SupabaseClient } from "@supabase/supabase-js";
-import { easternDate, type Entry } from "@/lib/domain";
+import { easternDate, timerTime, type Entry } from "@/lib/domain";
 import { authStorageKey, browserClient, recordsOf } from "@/lib/store";
 import { useWorkspace } from "@/lib/use-workspace";
 import { Brand, Button, Field, message } from "./ui";
+
+// Each main destination has its own address (#today, #recipes...) so reloads and the installed app return to the same place.
+const tabFromHash = (hash: string) => nav.find(({ label }) => `#${label.toLowerCase()}` === hash.toLowerCase())?.label;
 import { Recipes, RecipeDetail, RecipeEditor } from "./recipes";
 import { Today, Calendar, EventEditor } from "./planner";
 import { BakingSession, StartSession } from "./session";
@@ -150,6 +153,12 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
   const demo = !client;
   const store = useWorkspace(client, workspace, identity, demo);
   const [tab, setTab] = useState<Tab>("Today");
+  useEffect(() => {
+    const sync = () => { setTab(tabFromHash(window.location.hash) ?? "Today"); setDetail(undefined); };
+    sync();
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
   const [detail, setDetail] = useState<Detail>();
   const [now, setNow] = useState(Date.now);
   const today = easternDate(new Date(now));
@@ -245,7 +254,12 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
     } catch { setAlertMessage("Could not enable timer notifications on this device."); }
   }
 
-  const open = (next: Tab) => { setTab(next); setDetail(undefined); };
+  const open = (next: Tab) => {
+    setTab(next);
+    setDetail(undefined);
+    const hash = `#${next.toLowerCase()}`;
+    if (window.location.hash !== hash) window.history.pushState(null, "", hash);
+  };
   const edit = (date: string, event?: Entry<"event">) => setDetail({ screen: "event", date, id: event?.id });
   const resume = (id: string) => {
     setDetail({ screen: "session", id });
@@ -265,10 +279,10 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
       back={() => open("Recipes")} bake={() => setDetail({ screen: "start", date: today, versionId: version.id })} />;
     if (detail?.screen === "event") return <EventEditor key={detail.id ?? "new"} day={detail.date} entry={event} initialTitle={detail.title} store={store}
       close={(selectedDay, saved) => { setDay(selectedDay); if (saved) open("Calendar"); else setDetail(undefined); }} />;
-    if (detail?.screen === "start") return <StartSession date={detail.date} event={event} initialVersion={detail.versionId} store={store} close={() => setDetail(undefined)} started={resume} />;
+    if (detail?.screen === "start") return <StartSession date={detail.date} event={event} initialVersion={detail.versionId} store={store} close={() => setDetail(undefined)} started={resume} browse={() => open("Recipes")} />;
     if (detail?.screen === "session" && active) return <BakingSession key={active.id} entry={active} store={store} now={now} photos={() => open("Photos")} audioReady={audioReady} sound={prepareAudio} />;
     switch (tab) {
-      case "Today": return <Today today={today} now={now} store={store} edit={edit} start={start} resume={resume} showCalendar={(date) => { setDay(date); open("Calendar"); }} showPhotos={() => open("Photos")} />;
+      case "Today": return <Today today={today} now={now} store={store} edit={edit} start={start} resume={resume} showCalendar={(date) => { setDay(date); open("Calendar"); }} showPhotos={() => open("Photos")} showRecipes={() => open("Recipes")} />;
       case "Calendar": return <Calendar day={day} setDay={setDay} today={today} store={store} edit={edit} start={start} />;
       case "Recipes": return <Recipes store={store} show={(id) => setDetail({ screen: "recipe", id })} edit={() => setDetail({ screen: "recipe-form" })} />;
       case "Photos": return <Photos store={store} client={client} workspace={workspace} />;
@@ -279,19 +293,27 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
   }
 
   const pending = Object.values(store.queue);
+  const running = sessions.filter((item) => item.document.status === "Active");
+  const nextTimer = running.flatMap((item) => item.document.timers).filter((timer) => !timer.cancelled).sort((a, b) => a.deadline - b.deadline)[0];
+  const inSession = detail?.screen === "session" || detail?.screen === "start";
+  const startLabel = running.length ? "Resume baking" : "Start baking";
   return <div className="shell">
     <a href="#workspace" className="skip">Skip to content</a>
     <aside className="rail"><img className="rail-logo" src="/brand/hb-app-icon.svg" alt="" width="56" height="56" /><nav aria-label="Main navigation">
       {nav.map(({ label, icon: Icon }) => <button type="button" key={label} aria-current={tab === label ? "page" : undefined} onClick={() => open(label)}>
         <Icon size={23} strokeWidth={1.8} aria-hidden="true" /><span>{label}</span>
       </button>)}
-    </nav></aside>
+    </nav>
+      {!inSession && <button type="button" className="rail-start" aria-label={startLabel} onClick={() => running.length ? resume(running[0].id) : start(today)}>
+        {startLabel}{nextTimer && <small aria-hidden="true">{nextTimer.deadline <= now ? "+" : ""}{timerTime(nextTimer.deadline - now)}</small>}
+      </button>}
+    </aside>
     <main className="workspace" id="workspace">
-      <header className="masthead"><Brand /><div className="actions">
-        {demo && <span className="eyebrow">Local demo</span>}
-        {!store.online && <span role="status" className="eyebrow">Offline</span>}
-        {pending.length > 0 && <span role="status" className="eyebrow">{pending.length} unsynced</span>}
-      </div></header>
+      <div className="statusbar">
+        {demo && <span className="hb-sync hb-sync--pending">Local demo</span>}
+        {!store.online && <span role="status" className="hb-sync hb-sync--offline">Offline</span>}
+        {pending.length > 0 && <span role="status" className="hb-sync hb-sync--pending">{pending.length} unsynced</span>}
+      </div>
       <div className="stack">
         {store.error && <div className="notice error stack" role="alert"><p>{store.error}</p><Button tone="secondary" onClick={() => void store.sync()}>Retry sync</Button></div>}
         {pending.filter((item) => item.conflict).map((item) => <section className="notice warning stack" key={item.entry.id}>

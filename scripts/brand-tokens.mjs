@@ -2,8 +2,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 const tokens = JSON.parse(readFileSync(new URL("../brand/tokens.json", import.meta.url), "utf8"));
 const themeTokens = [...tokens.color.tokens, ...tokens.shadow.tokens];
+// Values written as "{other-token}" are aliases and become var(--other-token).
+const resolve = (value) => /^\{[A-Za-z0-9_.-]+\}$/.test(value) ? `var(--${value.slice(1, -1)})` : value;
 const variables = (items, theme) => items.map(({ name, value }) =>
-  `  --${name}: ${typeof value === "string" ? value : value[theme]};`).join("\n");
+  `  --${name}: ${resolve(typeof value === "string" ? value : value[theme])};`).join("\n");
 const staticTokens = [
   ...tokens.spacing.tokens, ...tokens.radius.tokens, ...tokens.size.tokens,
   ...Object.entries(tokens.type.families).map(([name, value]) => ({ name: `font-${name}`, value })),
