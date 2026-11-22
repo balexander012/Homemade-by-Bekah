@@ -112,6 +112,7 @@ hr { border-color: var(--line-200); }
 .date-nav { display: flex; align-items: center; gap: var(--space-2); }
 .date-nav h2 { font-family: var(--font-display); font-weight: 400; font-size: 1.75rem; min-width: 12ch; }
 .date-nav .hb-btn { min-width: var(--touch-app); padding: 0; }
+.date-nav .hb-btn:not([aria-label]) { padding: 0 var(--space-4); }
 
 /* Calendar */
 .calendar-grid button { min-height: 96px; display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
@@ -174,7 +175,6 @@ hr { border-color: var(--line-200); }
   .rail nav { order: 2; }
   .rail { flex-direction: column; gap: 6px; }
   .rail .rail-start { order: 1; margin: 0; min-height: 56px; font-size: 1.05rem; }
-  .rail .rail-start[data-mobile="hide"] { display: none; }
   .rail .rail-start small { display: inline; margin-left: 8px; }
   .workspace { padding-bottom: calc(160px + env(safe-area-inset-bottom)); }
   h1 { font-size: 2rem; }
@@ -187,3 +187,5 @@ hr { border-color: var(--line-200); }
   .empty-state { padding: var(--space-5); }
 }
 .cal-dot { display: none; width: 8px; height: 8px; border-radius: 50%; background: var(--brand-primary); }
+.event-notes > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--text-secondary); font-weight: 600; }
+.event-notes > p { max-height: 16rem; overflow-y: auto; overflow-wrap: anywhere; }

@@ -25,8 +25,8 @@ export function RecipePicker({ versions, selected, onChange, empty }: { versions
   </fieldset>;
 }
 
-export function EventCard({ entry, day, versions, edit, start }: {
-  entry: Entry<"event">; day: string; versions: Version[]; edit: () => void; start: () => void;
+export function EventCard({ entry, day, versions, edit, start, showNotes = true }: {
+  entry: Entry<"event">; day: string; versions: Version[]; edit: () => void; start: () => void; showNotes?: boolean;
 }) {
   const event = entry.document;
   const recipes = eventRecipes(event, versions);
@@ -37,7 +37,7 @@ export function EventCard({ entry, day, versions, edit, start }: {
     {((event.start && !easternTimeExists(day, event.start)) || (event.end && !easternTimeExists(day, event.end))) &&
       <p className="warning">This time falls in the daylight saving clock change. Confirm a time for this date.</p>}
     {recipes.length > 0 && <ul>{recipes.map(({ version, target }) => <li key={version.id}>{version.document.name}{target ? ` · ${target} ${version.document.yieldUnit}` : ""}</li>)}</ul>}
-    {event.notes && <p className="muted whitespace-pre-wrap">{event.notes}</p>}
+    {showNotes && event.notes && <details className="event-notes"><summary>Notes</summary><p className="muted whitespace-pre-wrap">{event.notes}</p></details>}
     <div className="actions"><Button tone="secondary" onClick={edit}>Edit event</Button>
       {event.status === "Scheduled" && <Button onClick={start}>Start baking</Button>}</div>
   </article>;
@@ -247,7 +247,7 @@ export function Today({ today, now, store, edit, start, resume, showCalendar, sh
       })}</div></section>}
       {(scheduled.length > 0 || checklist.length > 0) && <div className={checklist.length ? "cols" : "stack"}>
         <section className="stack"><h2>Today’s schedule</h2>
-          {scheduled.length ? scheduled.map(({ entry, day }) => <EventCard key={entry.id} entry={entry} day={day} versions={versions} edit={() => edit(day, entry)} start={() => start(day, entry)} />) :
+          {scheduled.length ? scheduled.map(({ entry, day }) => <EventCard key={entry.id} entry={entry} day={day} versions={versions} showNotes={false} edit={() => edit(day, entry)} start={() => start(day, entry)} />) :
             <p className="panel muted"><CalendarDays className="inline mr-2" size={22} /> Nothing on the calendar today.</p>}
         </section>
         {checklist.length > 0 && <section className="panel stack"><h2>Checklist</h2>

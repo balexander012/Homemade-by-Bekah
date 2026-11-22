@@ -154,7 +154,7 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
   const store = useWorkspace(client, workspace, identity, demo);
   const [tab, setTab] = useState<Tab>("Today");
   useEffect(() => {
-    const sync = () => setTab(tabFromHash(window.location.hash) ?? "Today");
+    const sync = () => { setTab(tabFromHash(window.location.hash) ?? "Today"); setDetail(undefined); };
     sync();
     window.addEventListener("popstate", sync);
     return () => window.removeEventListener("popstate", sync);
@@ -304,8 +304,7 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
         <Icon size={23} strokeWidth={1.8} aria-hidden="true" /><span>{label}</span>
       </button>)}
     </nav>
-      {!inSession && <button type="button" className="rail-start" data-mobile={running.length || tab === "Today" ? "show" : "hide"}
-        aria-label={startLabel} onClick={() => running.length ? resume(running[0].id) : start(today)}>
+      {!inSession && <button type="button" className="rail-start" aria-label={startLabel} onClick={() => running.length ? resume(running[0].id) : start(today)}>
         {startLabel}{nextTimer && <small aria-hidden="true">{nextTimer.deadline <= now ? "+" : ""}{timerTime(nextTimer.deadline - now)}</small>}
       </button>}
     </aside>
