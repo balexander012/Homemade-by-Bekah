@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "kind": "recipe",
+  "importId": "a3e95cb3-8954-469f-b07f-baf3c7fa2ac9",
+  "recipeKey": "smores-cookies",
+  "aliases": [
+    "S'mores Graham Cracker Cookies"
+  ],
+  "verification": "Needs review",
+  "sourceReferences": [
+    "Bekah Baking ChatGPT Project, 'Lay Out Four Recipes', 2026-11-21: user-provided ScreenRecording_11-21-2026 11-21-56_1.mp4 showing four cookie recipes.",
+    "Bekah Baking ChatGPT Project, 'Recipe And Pricing' and 'Cookie Photography Review', 2026-11-22: selected Angie's S'mores Cookies; softened butter and vanilla extract instead of vanilla paste; discussion of the marshmallow/chocolate/graham filling."
+  ],
+  "issues": [
+    "Exact chocolate filling quantity and piece size for 12 cookies were not recovered; preserve this ingredient as unknown rather than inventing an amount.",
+    "Graham cracker piece dimensions for the 12 filling bases were not recovered. Confirm the original video details and that this is the accepted version after the November 22 test."
+  ],
+  "recipe": {
+    "name": "S'mores Cookies",
+    "category": "Cookies",
+    "description": "Graham cracker cookie dough wrapped around s'mores filling; one hour chill. Missing chocolate portion details.",
+    "source": "Angie's s'mores cookie recipe as discussed from user-provided 2026-11-21 screen recording; Bekah modifications 2026-11-22",
+    "tags": [
+      "graham crackers",
+      "marshmallow",
+      "needs-filling-verification"
+    ],
+    "yieldLow": 12,
+    "yieldUnit": "cookies",
+    "status": "Draft",
+    "ingredients": [
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e21",
+        "name": "Butter",
+        "quantity": 150,
+        "unit": "g",
+        "preparation": "2/3 cup; softened, not melted"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e22",
+        "name": "Brown sugar",
+        "quantity": 0.5,
+        "unit": "cup",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e23",
+        "name": "Granulated cane sugar",
+        "quantity": 0.5,
+        "unit": "cup",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e24",
+        "name": "Large egg",
+        "quantity": 1,
+        "unit": "each",
+        "preparation": "whole"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e25",
+        "name": "Egg yolk",
+        "quantity": 1,
+        "unit": "each",
+        "preparation": "additional"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e26",
+        "name": "Pure vanilla extract",
+        "quantity": 1,
+        "unit": "teaspoon",
+        "preparation": "substitutes for vanilla paste"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e27",
+        "name": "All-purpose flour",
+        "quantity": 200,
+        "unit": "g",
+        "preparation": "1 2/3 cups"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e28",
+        "name": "Finely crushed graham crackers",
+        "quantity": 50,
+        "unit": "g",
+        "preparation": "1/2 cup; for dough"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e29",
+        "name": "Baking powder",
+        "quantity": 1,
+        "unit": "teaspoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e2a",
+        "name": "Baking soda",
+        "quantity": 0.5,
+        "unit": "teaspoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e2b",
+        "name": "Salt",
+        "quantity": 0.25,
+        "unit": "teaspoon",
+        "preparation": ""
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e2c",
+        "name": "Mini chocolate chips",
+        "quantity": 150,
+        "unit": "g",
+        "preparation": "3/4 cup"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e2d",
+        "name": "Graham cracker pieces",
+        "quantity": 12,
+        "unit": "each",
+        "preparation": "for filling bases; exact dimensions unknown"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e2e",
+        "name": "Chocolate pieces for filling",
+        "quantity": null,
+        "unit": "",
+        "preparation": "exact amount and size unknown"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004e2f",
+        "name": "Large marshmallows",
+        "quantity": 12,
+        "unit": "each",
+        "preparation": "one per cookie"
+      }
+    ],
+    "steps": [
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004ee9",
+        "instruction": "Beat 2/3 cup (150 g) softened butter with 1/2 cup brown sugar and 1/2 cup granulated cane sugar until combined.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e21",
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e22",
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e23"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004eea",
+        "instruction": "Add 1 large egg, 1 additional egg yolk, and 1 teaspoon vanilla extract. Mix until combined.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e24",
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e25",
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e26"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004eeb",
+        "instruction": "Add 1 2/3 cups (200 g) all-purpose flour, 1/2 cup (50 g) finely crushed graham crackers, 1 teaspoon baking powder, 1/2 teaspoon baking soda, and 1/4 teaspoon salt; mix into a dough.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e27",
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e28",
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e29",
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e2a",
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e2b"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004eec",
+        "instruction": "Fold in 3/4 cup (150 g) mini chocolate chips.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e2c"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004eed",
+        "instruction": "Divide into 12 portions and refrigerate for 1 hour.",
+        "ingredients": [],
+        "kind": "Rest",
+        "minutes": 60
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004eee",
+        "instruction": "Preheat oven to 350°F and line a baking sheet with parchment.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004eef",
+        "instruction": "For each cookie, assemble a filling with one graham cracker piece on the bottom, chocolate on top (exact quantity not recovered), and one large marshmallow on top.",
+        "ingredients": [
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e2d",
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e2e",
+          "a6b8c42d-7cd1-4a17-8d3e-000000004e2f"
+        ],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004ef0",
+        "instruction": "Flatten each chilled dough portion and wrap completely around its assembled filling; arrange on the baking sheet with space between cookies.",
+        "ingredients": [],
+        "kind": "Work"
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004ef1",
+        "instruction": "Bake at 350°F for approximately 12 minutes.",
+        "ingredients": [],
+        "kind": "Oven",
+        "minutes": 12,
+        "temperature": 350
+      },
+      {
+        "id": "a6b8c42d-7cd1-4a17-8d3e-000000004ef2",
+        "instruction": "Allow cookies to cool on the baking sheet for approximately 10 minutes before moving to a cooling rack.",
+        "ingredients": [],
+        "kind": "Cool",
+        "minutes": 10
+      }
+    ],
+    "equipment": [
+      "Mixing bowl",
+      "Baking sheet",
+      "Parchment paper",
+      "Cooling rack"
+    ],
+    "prep": [],
+    "storage": "",
+    "freezer": "",
+    "notes": "Bekah confirmed softened butter, not melted or hard; pure vanilla extract replaces paste. No distinct finalized graham cracker cookie was found. Do not assume melted marshmallow must ooze out on its own.",
+    "changeReason": "User-requested substitution of vanilla extract for paste; clarified softened butter.",
+    "exceptions": [],
+    "shots": []
+  }
+}
