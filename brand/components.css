@@ -1,0 +1,79 @@
+/* Homemade by Bekah: component styles. Reads tokens.css variables only. */
+.hb { font-family: var(--font-sans); color: var(--ink-900); background: var(--cream-50); -webkit-font-smoothing: antialiased; }
+.hb *, .hb *::before, .hb *::after { box-sizing: border-box; }
+.hb-display { font-family: var(--font-display); font-variation-settings: "SOFT" 50, "WONK" 0; font-weight: 400; }
+.hb-italic { font-family: var(--font-display); font-style: italic; font-variation-settings: "SOFT" 60; }
+.hb-label { font: 600 13px/16px var(--font-sans); letter-spacing: .12em; text-transform: uppercase; }
+.hb-muted { color: var(--ink-600); }
+.hb-tnum { font-variant-numeric: tabular-nums; }
+:where(.hb) :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* Buttons */
+.hb-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--touch-web); padding: 0 var(--space-5); border-radius: var(--radius-md); border: 1.5px solid transparent; font: 600 16px/1 var(--font-sans); letter-spacing: .01em; cursor: pointer; text-decoration: none; white-space: nowrap; transition: background .15s, border-color .15s; }
+.hb-btn--primary { background: var(--olive-600); color: var(--on-brand); }
+.hb-btn--primary:hover { background: var(--olive-700); }
+.hb-btn--secondary { background: transparent; color: var(--olive-700); border-color: var(--olive-600); }
+.hb-btn--secondary:hover { background: var(--olive-100); }
+.hb-btn--ghost { background: transparent; color: var(--olive-700); text-decoration: underline; text-underline-offset: 4px; padding: 0 var(--space-3); }
+.hb-btn:disabled, .hb-btn[aria-disabled="true"] { background: var(--linen-100); color: var(--ink-600); border-color: var(--line-200); cursor: not-allowed; }
+.hb-btn--app { min-height: var(--touch-app); padding: 0 var(--space-6); border-radius: var(--radius-lg); font-size: 20px; }
+
+/* Badges */
+.hb-badge { display: inline-flex; align-items: center; height: 26px; padding: 0 var(--space-2); border-radius: var(--radius-sm); font: 600 12px/1 var(--font-sans); letter-spacing: .1em; text-transform: uppercase; border: 1px solid currentColor; }
+.hb-badge--new { color: var(--olive-700); background: var(--olive-100); border-color: transparent; }
+.hb-badge--seasonal { color: var(--walnut-600); }
+.hb-badge--soldout { color: var(--status-danger); }
+.hb-badge--preorder { color: var(--on-brand); background: var(--olive-600); border-color: transparent; }
+
+/* Photo placeholder (replace with real photography) */
+.hb-photo { position: relative; background: var(--linen-100); border-radius: var(--radius-lg); overflow: hidden; display: flex; align-items: flex-end; padding: var(--space-3); color: var(--ink-600); font: 600 11px/1.3 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; min-height: 120px; }
+.hb-photo::before { content: ""; position: absolute; inset: 12% 18% 30% 18%; border-radius: 50%; background: var(--line-200); opacity: .7; }
+.hb-photo > span { position: relative; }
+
+/* Product card */
+.hb-card { background: var(--paper-0); border: 1px solid var(--line-200); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-1); display: flex; flex-direction: column; }
+.hb-card:hover { box-shadow: var(--shadow-2); }
+.hb-card .hb-photo { border-radius: 0; aspect-ratio: 4/5; min-height: 0; }
+.hb-card__body { padding: var(--space-4); display: grid; gap: var(--space-2); }
+.hb-card__title { font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 500; margin: 0; }
+.hb-card__meta { display: flex; justify-content: space-between; align-items: center; }
+.hb-price { font: 600 18px/24px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--walnut-600); }
+
+/* Forms */
+.hb-field { display: grid; gap: 6px; }
+.hb-field > label { font: 600 15px/20px var(--font-sans); }
+.hb-input, .hb-select { min-height: var(--touch-web); padding: 0 var(--space-3); border: 1.5px solid var(--ink-600); border-radius: var(--radius-md); background: var(--paper-0); color: var(--ink-900); font: 400 17px/1 var(--font-sans); }
+.hb-input::placeholder { color: var(--ink-600); }
+.hb-input:focus { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-color: var(--olive-700); }
+.hb-field--error .hb-input { border-color: var(--status-danger); }
+.hb-help { font: 400 15px/22px var(--font-sans); color: var(--ink-600); }
+.hb-field--error .hb-help { color: var(--status-danger); }
+
+/* Navigation */
+.hb-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--line-200); background: var(--cream-50); }
+.hb-nav__links { display: flex; gap: var(--space-5); list-style: none; margin: 0; padding: 0; }
+.hb-nav__links a { color: var(--ink-900); text-decoration: none; font: 600 15px/1 var(--font-sans); padding: 10px 0; border-bottom: 2px solid transparent; }
+.hb-nav__links a[aria-current="page"] { border-color: var(--olive-600); color: var(--olive-700); }
+
+/* App: status chip */
+.hb-status { display: inline-flex; align-items: center; gap: var(--space-2); height: 36px; padding: 0 var(--space-3) 0 var(--space-2); border-radius: var(--radius-full); font: 600 16px/1 var(--font-sans); background: var(--paper-0); border: 1.5px solid currentColor; }
+.hb-status::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: currentColor; }
+.hb-status--prep { color: var(--status-info); }
+.hb-status--proof { color: var(--status-warn); }
+.hb-status--bake { color: var(--walnut-600); }
+.hb-status--done { color: var(--status-ready); }
+.hb-status--late { color: var(--status-danger); }
+.hb-status--late::before { border-radius: 2px; transform: rotate(45deg); width: 10px; height: 10px; }
+
+/* App: panel, ingredient rows, checklist, timer */
+.hb-panel { background: var(--paper-0); border: 1px solid var(--line-200); border-radius: var(--radius-xl); padding: var(--space-5); }
+.hb-ing { display: grid; grid-template-columns: 56px 150px 1fr; align-items: center; gap: var(--space-4); min-height: var(--touch-app); border-bottom: 1px solid var(--line-200); }
+.hb-ing:last-child { border-bottom: 0; }
+.hb-ing__qty { font: 700 34px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+.hb-ing__qty small { font-size: 60%; font-weight: 600; color: var(--ink-600); margin-left: 3px; }
+.hb-ing__name { font: 400 22px/28px var(--font-sans); }
+.hb-check { width: 44px; height: 44px; border-radius: var(--radius-md); border: 2.5px solid var(--ink-600); display: grid; place-items: center; background: var(--paper-0); }
+.hb-check[aria-checked="true"] { background: var(--olive-600); border-color: var(--olive-600); }
+.hb-check[aria-checked="true"]::after { content: ""; width: 12px; height: 22px; border: solid var(--on-brand); border-width: 0 4px 4px 0; transform: rotate(45deg) translate(-2px, -2px); }
+.hb-ing--done .hb-ing__name, .hb-ing--done .hb-ing__qty { color: var(--ink-600); text-decoration: line-through; text-decoration-thickness: 2px; }
+.hb-timer { font: 600 64px/1 var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }

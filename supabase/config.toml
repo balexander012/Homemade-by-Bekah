@@ -1,0 +1,5 @@
+project_id = "homemade-by-bekah"
+
+[auth]
+site_url = "http://localhost:3000"
+enable_signup = false
