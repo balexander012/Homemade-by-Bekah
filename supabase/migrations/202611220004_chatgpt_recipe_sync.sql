@@ -59,6 +59,10 @@ create table baking_import.plan_receipts (
   resulting_revision integer not null
 );
 
+alter table baking_import.configuration enable row level security;
+alter table baking_import.recipe_keys enable row level security;
+alter table baking_import.plan_receipts enable row level security;
+
 create function baking_import.name_key(input text) returns text
 language sql immutable strict set search_path = '' as $$
   select pg_catalog.regexp_replace(
