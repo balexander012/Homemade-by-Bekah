@@ -5,12 +5,13 @@ on:
     paths:
       - 'recipe-imports/pending/**'
       - 'plan-imports/pending/**'
+      - 'photo-imports/pending/**'
   workflow_dispatch:
     inputs:
       inbox:
         description: Inbox to process
         type: choice
-        options: [recipe, plan]
+        options: [recipe, plan, photo]
         required: true
       import_id:
         description: Optional UUID for a single file retry
@@ -32,6 +33,7 @@ jobs:
     outputs:
       recipe: ${{ steps.changes.outputs.recipe }}
       plan: ${{ steps.changes.outputs.plan }}
+      photo: ${{ steps.changes.outputs.photo }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,7 +49,7 @@ jobs:
           if [ "$EVENT" = workflow_dispatch ]; then
             printf '%s=true\n' "$INBOX" >> "$GITHUB_OUTPUT"
           else
-            for inbox in recipe plan; do
+            for inbox in recipe plan photo; do
               files=$(git ls-files -- "$inbox-imports/pending/*.json")
               if [ -n "$files" ]; then
                 printf '%s=true\n' "$inbox" >> "$GITHUB_OUTPUT"
@@ -113,4 +115,34 @@ jobs:
         env:
           IMPORT_INBOX_ROOT: ${{ github.workspace }}/inbox
           IMPORT_DATABASE_URL: ${{ secrets.SUPABASE_PLAN_IMPORT_DATABASE_URL }}
+          IMPORT_ONLY_ID: ${{ inputs.import_id }}
+  photos:
+    needs: detect
+    if: needs.detect.outputs.photo == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          path: inbox
+      - uses: actions/checkout@v4
+        with:
+          # Execute the reviewed importer even when a writer can change inbox content.
+          ref: 6c9b2ae61fdad11af49c1bf6c8934ff46fa7ac2c
+          persist-credentials: false
+          path: runner
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: runner/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: runner
+      - run: npm exec --offline -- tsx scripts/sync-photos.ts
+        working-directory: runner
+        env:
+          IMPORT_INBOX_ROOT: ${{ github.workspace }}/inbox
+          IMPORT_DATABASE_URL: ${{ secrets.SUPABASE_RECIPE_IMPORT_DATABASE_URL }}
           IMPORT_ONLY_ID: ${{ inputs.import_id }}
