@@ -28,7 +28,7 @@ test("plans and reschedules batches, then resumes state and timers after an offl
   await expect(page.getByRole("heading", { name: "Today’s Plan" })).toBeVisible();
   const recipeNames = ["Test lemon cookies", "Test chocolate cookies", "Test vanilla cookies"];
   for (const name of recipeNames) await createRecipe(page, name);
-  await navigation(page, "Today").click();
+  await navigation(page, "Home").click();
   await page.getByRole("button", { name: "Add event", exact: true }).click();
   await page.getByLabel("Event title").fill("Friday cookie test");
   for (const name of recipeNames) {
@@ -36,7 +36,7 @@ test("plans and reschedules batches, then resumes state and timers after an offl
     await page.getByLabel(`Target for ${name}`).fill("5");
   }
   await page.getByRole("button", { name: "Save event" }).click();
-  await navigation(page, "Today").click();
+  await navigation(page, "Home").click();
   await expect(page.getByRole("heading", { name: "Friday cookie test", exact: true })).toBeVisible();
   await page.getByRole("heading", { name: "Friday cookie test", exact: true }).locator("..").getByRole("button", { name: "Edit event" }).click();
   await page.getByLabel("Event date").fill(addDays(today, 1));
@@ -48,15 +48,16 @@ test("plans and reschedules batches, then resumes state and timers after an offl
   await expect(page.getByText("50 g", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Complete step" }).click();
   await page.getByRole("button", { name: "Start timer" }).click();
-  await expect(page.getByRole("heading", { name: "Timers" })).toBeVisible();
+  await expect(page.locator(".bake-timer-toggle")).toContainText("active timer");
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "Resume baking", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Friday cookie test", exact: true })).toBeVisible();
   await expect(page.getByText("Offline", { exact: true })).toBeVisible();
-  await expect(page.getByText(/Test lemon cookies .*1 of 1 steps/)).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Timers" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Baking session sections" }).getByRole("button", { name: "Overview" }).click();
+  await expect(page.locator(".bake-overview-row").filter({ hasText: "Test lemon cookies" })).toContainText("1 of 1 steps");
+  await expect(page.locator(".bake-timer-toggle")).toBeVisible();
   await context.setOffline(false);
   await navigation(page, "Photos").click();
   await expect(page.getByRole("heading", { name: "Test lemon cookies", exact: true })).toBeVisible();
@@ -75,7 +76,7 @@ test("uses real brand assets, persists theme and keeps the viewport free of hori
   expect(manifest.ok()).toBe(true);
   expect((await manifest.json()).display).toBe("standalone");
   expect((await page.request.get("/icon-180.png")).ok()).toBe(true);
-  await navigation(page, "More").click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("combobox", { name: "Kitchen theme", exact: true }).selectOption("dark");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -203,4 +204,46 @@ test("explains unsupported photo files instead of saving them", async ({ page })
   await page.locator('input[type="file"]').setInputFiles([{ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("not a photo") }]);
   await expect(page.locator(".photo-dialog .notice.error")).toContainText("notes.txt is not a JPEG, PNG, WebP or HEIC photo.");
   await expect(page.getByRole("button", { name: /Save .*photo/ })).toBeDisabled();
+});
+
+test("deep-links to recipe and baking session screens and preserves browser history", async ({ page }) => {
+  await page.goto("/");
+  await createRecipe(page, "Deep link oatmeal cookies");
+  await expect(page).toHaveURL(/\/recipes\/[a-f0-9-]+$/);
+  const recipeUrl = page.url();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Deep link oatmeal cookies", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Start baking" }).click();
+  await expect(page).toHaveURL(/\/bake\/new\?/);
+  await page.getByRole("button", { name: "Begin session" }).click();
+  await expect(page).toHaveURL(/\/bake\/[a-f0-9-]+$/);
+  const sessionUrl = page.url();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "All sessions" })).toBeVisible();
+  await page.getByRole("button", { name: "All sessions" }).click();
+  await expect(page).toHaveURL(/\/bake$/);
+  await page.goBack();
+  await expect(page).toHaveURL(sessionUrl);
+  await page.goto(recipeUrl);
+  await expect(page.getByRole("heading", { name: "Deep link oatmeal cookies", exact: true })).toBeVisible();
+});
+
+test("keeps active baking steps focused with accessible preparation and overview", async ({ page }) => {
+  await page.goto("/");
+  await createRecipe(page, "Baking workflow test");
+  await page.getByRole("button", { name: "Start baking" }).click();
+  await page.getByRole("button", { name: "Begin session" }).click();
+  await expect(page.locator(".bake-current-step")).toBeVisible();
+  await expect(page.locator(".bake-current-step")).toContainText("Mix the butter until smooth.");
+  const sections = page.getByRole("navigation", { name: "Baking session sections" });
+  await sections.getByRole("button", { name: "Prep" }).click();
+  await expect(page.getByRole("heading", { name: "Gather ingredients" })).toBeVisible();
+  await sections.getByRole("button", { name: "Overview" }).click();
+  await expect(page.locator(".bake-overview-row")).toContainText("0 of 1 steps");
+  await sections.getByRole("button", { name: "Steps" }).click();
+  await page.getByRole("button", { name: "Complete step" }).click();
+  await sections.getByRole("button", { name: "Finish" }).click();
+  await page.getByRole("button", { name: "Complete baking session" }).click();
+  await page.getByRole("button", { name: "Yes, finish session" }).click();
+  await expect(page.getByText("Baking session completed.")).toBeVisible();
 });
