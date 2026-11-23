@@ -55,6 +55,20 @@ describe("guided baking", () => {
     expect(formatAmount(scale({ ...egg, gramsPerUnit: 48 }, recipe, 5))).toBe("20 g");
     expect(scale(egg, { ...recipe, yieldHigh: 30 }, 5).warning).toContain("range");
   });
+  it("formats kitchen measures as fractions without rounding nonstandard quantities", () => {
+    const recipe = { yieldLow: 1, yieldHigh: undefined };
+    const amount = (quantity: number, unit: string) =>
+      formatAmount(scale({ id: id(), name: "Ingredient", quantity, unit, preparation: "" }, recipe, null));
+    expect(amount(0.75, "cup")).toBe("¾ cup");
+    expect(amount(0.5, "cup")).toBe("½ cup");
+    expect(amount(1.25, "cup")).toBe("1¼ cups");
+    expect(amount(2.5, "teaspoon")).toBe("2½ teaspoons");
+    expect(amount(1, "tablespoon")).toBe("1 tablespoon");
+    expect(amount(0.333333333, "cup")).toBe("⅓ cup");
+    expect(amount(0.31, "cup")).toBe("0.31 cup");
+    expect(amount(50, "g")).toBe("50 g");
+    expect(amount(2.5, "tsp")).toBe("2½ tsp");
+  });
   it("combines identical preparation and keeps different butter and preparations separate", () => {
     const a = cookie("A");
     const b = cookie("B");
