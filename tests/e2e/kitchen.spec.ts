@@ -361,3 +361,78 @@ test("draft recipe status does not falsely claim that the formula was tested", a
   await expect(page.getByText("This is a working draft, not a published baking formula.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Start baking" })).toBeDisabled();
 });
+
+
+test("Side-by-Side shows two equal step cards with independent progress, undo and timers", async ({ page }) => {
+  await page.goto("/");
+  await createRecipe(page, "Parallel butter cookies");
+  await createRecipe(page, "Parallel cinnamon cookies");
+  await navigation(page, "Home").click();
+  await page.getByRole("button", { name: "Add event", exact: true }).click();
+  await page.getByLabel("Event title").fill("Parallel baking session");
+  for (const name of ["Parallel butter cookies", "Parallel cinnamon cookies"]) {
+    await page.getByRole("checkbox", { name, exact: true }).check();
+  }
+  await page.getByRole("button", { name: "Save event" }).click();
+  await navigation(page, "Home").click();
+  const event = page.locator(".today-event-card").filter({ hasText: "Parallel baking session" });
+  await event.getByRole("button", { name: "Start baking" }).click();
+  await page.getByRole("radio", { name: /^Side-by-Side/ }).check();
+  await page.getByRole("button", { name: "Begin session" }).click();
+
+  const panels = page.locator(".bake-side-panel");
+  await expect(panels).toHaveCount(2);
+  const first = panels.filter({ hasText: "Parallel butter cookies" });
+  const second = panels.filter({ hasText: "Parallel cinnamon cookies" });
+  await expect(first.locator(".bake-current-step")).toContainText("Mix the butter until smooth.");
+  await expect(second.locator(".bake-current-step")).toContainText("Mix the butter until smooth.");
+
+  const sizes = await panels.locator(".bake-current-step").evaluateAll((nodes) =>
+    nodes.map((node) => ({ height: node.getBoundingClientRect().height, width: node.getBoundingClientRect().width,
+      left: node.getBoundingClientRect().left })));
+  expect(Math.abs(sizes[0].height - sizes[1].height)).toBeLessThan(2);
+  expect(Math.abs(sizes[0].width - sizes[1].width)).toBeLessThan(2);
+  expect(sizes[1].left).toBeGreaterThan(sizes[0].left);
+
+  await first.getByRole("button", { name: "Complete step" }).click();
+  await expect(first.getByRole("heading", { name: "Recipe complete" })).toBeVisible();
+  await expect(second.locator(".bake-current-step")).toContainText("Mix the butter until smooth.");
+  await first.getByRole("button", { name: "Undo" }).click();
+  await expect(first.locator(".bake-current-step")).toContainText("Mix the butter until smooth.");
+
+  await second.getByRole("button", { name: "Set timer" }).click();
+  await second.getByRole("button", { name: "Start timer" }).click();
+  await expect(page.locator(".bake-timer-toggle")).toContainText("active timer");
+
+  const selector = page.getByRole("combobox", { name: "Baking mode" });
+  await selector.selectOption("Sequential");
+  await expect(page.locator(".bake-side-panel")).toHaveCount(0);
+  await expect(page.locator(".bake-current-step")).toHaveCount(1);
+  await selector.selectOption("Side-by-Side");
+  await expect(page.locator(".bake-side-panel")).toHaveCount(2);
+
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: "Baking mode" })).toHaveValue("Side-by-Side");
+  await expect(page.locator(".bake-side-panel")).toHaveCount(2);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("single recipe step cards keep the same height after advancing", async ({ page }) => {
+  await page.goto("/");
+  await createRecipe(page, "Stable step sizing cookies");
+  // Add a second, longer step to exercise size consistency on the same recipe.
+  await page.getByRole("button", { name: "New revision" }).click();
+  await page.getByRole("button", { name: "Add step" }).click();
+  await page.getByLabel("Instruction", { exact: true }).last().fill(
+    "Mix the ingredient thoroughly until light and fluffy, checking the texture and scraping down the bowl. " +
+    "Repeat the mixing action carefully before setting the dough aside.");
+  await page.getByRole("button", { name: "Save recipe" }).click();
+  await page.getByRole("button", { name: "Start baking" }).first().click();
+  await page.getByRole("button", { name: "Begin session" }).click();
+  const step = page.locator(".bake-current-step");
+  const firstHeight = await step.evaluate((node) => node.getBoundingClientRect().height);
+  await page.getByRole("button", { name: "Complete step" }).click();
+  await expect(step).toContainText("Mix the ingredient thoroughly");
+  const secondHeight = await step.evaluate((node) => node.getBoundingClientRect().height);
+  expect(Math.abs(firstHeight - secondHeight)).toBeLessThan(2);
+});
