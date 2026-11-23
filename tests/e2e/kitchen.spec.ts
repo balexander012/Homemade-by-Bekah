@@ -62,7 +62,9 @@ test("plans and reschedules batches, then resumes state and timers after an offl
   await context.setOffline(false);
   await navigation(page, "Photos").click();
   await expect(page.getByRole("heading", { name: "Test lemon cookies", exact: true })).toBeVisible();
-  await page.getByRole("combobox", { name: "Hero shot", exact: true }).selectOption("Captured");
+  await expect(page.locator(".photos-workspace")).toHaveCount(1);
+  await expect(page.locator(".photos-shot-option")).toHaveCount(6);
+  await page.getByRole("combobox", { name: "Hero shot status", exact: true }).selectOption("Captured");
   await page.getByText("Baking feedback").click();
   await page.getByLabel("Actual yield").fill("5");
   await page.getByRole("button", { name: "Save feedback" }).click();
@@ -251,4 +253,25 @@ test("keeps active baking steps focused with accessible preparation and overview
   await page.getByRole("button", { name: "Complete baking session" }).click();
   await page.getByRole("button", { name: "Yes, finish session" }).click();
   await expect(page.getByText("Baking session completed.")).toBeVisible();
+});
+
+
+test("photo workspace shows one batch at a time and avoids oversized panels", async ({ page }) => {
+  await page.goto("/");
+  await createRecipe(page, "Product photo navigation test");
+  await page.getByRole("button", { name: "Start baking" }).click();
+  await page.getByRole("button", { name: "Begin session" }).click();
+  await page.getByRole("button", { name: "Complete step" }).click();
+  await navigation(page, "Photos").click();
+  await expect(page.getByRole("heading", { name: "Photos", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Product photo navigation test", exact: true })).toBeVisible();
+  await expect(page.locator(".photos-workspace")).toHaveCount(1);
+  await expect(page.locator(".photos-shot-option")).toHaveCount(6);
+  await expect(page.locator(".photos-upload-fields")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Upload", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: /Broken-open texture/ }).click();
+  await expect(page.getByRole("combobox", { name: "Broken-open texture status" })).toHaveValue("Not started");
+  await page.getByRole("combobox", { name: "Broken-open texture status" }).selectOption("Captured");
+  await expect(page.locator(".photos-shot-option").filter({ hasText: "Broken-open texture" })).toHaveAttribute("data-status", "Captured");
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
