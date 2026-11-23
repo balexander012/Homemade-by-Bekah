@@ -81,7 +81,7 @@ export const feedbackSchema = z.object({
   notes, worked: notes, change: notes, again: z.enum(["", "Yes", "No"]),
 });
 export const sessionSchema = z.object({
-  title: short, date, eventId: uuid.optional(), focusVersionId: uuid.optional(), mode: z.enum(modes), status: z.enum(["Active", "Completed"]),
+  title: short, date, eventId: uuid.optional(), focusVersionId: uuid.optional(), mode: z.enum(modes), status: z.enum(["Active", "Completed"]), cleared: z.boolean().optional(),
   recipes: z.array(selectionSchema.extend({ completed: z.array(uuid).max(100) })).min(1).max(20),
   timers: z.array(timerSchema).max(300), prepared: z.array(z.string().max(1000)).max(3000),
   feedback: z.record(uuid, feedbackSchema), heroPhotos: z.record(uuid, uuid).optional(), shots: z.record(uuid, z.record(z.string().max(200), z.enum(shotStatuses))),
@@ -286,4 +286,13 @@ export function newSession(title: string, day: string, selections: Selection[], 
     recipes: selections.map((selection) => ({ ...selection, completed: [] })),
     timers: [], prepared: [], feedback: {}, shots: {}, oven: { phase: "Available", notes: "" },
   };
+}
+
+/** Hide a test session without deleting recipe versions, photos, or baking history. */
+export function clearBakingSession(session: Session): Session {
+  return { ...session, cleared: true, timers: session.timers.map((timer) => ({ ...timer, cancelled: true })) };
+}
+
+export function restoreBakingSession(session: Session): Session {
+  return { ...session, cleared: false };
 }
