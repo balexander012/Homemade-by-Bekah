@@ -16,6 +16,8 @@ export function Photo({ client, path, alt }: { client: SupabaseClient; path: str
   useEffect(() => {
     let active = true;
     let photoUrl = "";
+    setFailed(false);
+    setUrl("");
     void client.storage.from("baking-photos").download(path).then(({ data, error }) => {
       if (!active) return;
       if (error || !data) { setFailed(true); return; }
@@ -24,8 +26,8 @@ export function Photo({ client, path, alt }: { client: SupabaseClient; path: str
     }).catch(() => { if (active) setFailed(true); });
     return () => { active = false; if (photoUrl) URL.revokeObjectURL(photoUrl); };
   }, [client, path]);
-  if (failed) return <p className="muted">Photo preview unavailable.</p>;
-  return url ? <img className="photo" src={url} alt={alt} onError={() => setFailed(true)} /> : <p className="muted">Loading photo…</p>;
+  if (failed) return <span className="muted photos-image-status">Photo preview unavailable.</span>;
+  return url ? <img className="photo" src={url} alt={alt} onError={() => setFailed(true)} /> : <span className="muted photos-image-status">Loading photo…</span>;
 }
 
 function Feedback({ session, version, store }: { session: Entry<"session">; version: Version; store: WorkspaceStore }) {
