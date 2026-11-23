@@ -34,7 +34,7 @@ export function Recipes({ store, show, edit, ideas }: { store: WorkspaceStore; s
   const [rejected, setRejected] = useState<string[]>([]);
   const versions = activeVersions({ ...store.library, versions: store.library.versions.filter((version) => !rejected.includes(version.id)) });
   const isApproved = (version: Version) => store.library.approvals[version.recipe_id] === version.id;
-  const sessions = recordsOf(store.records, "session");
+  const sessions = recordsOf(store.records, "session").filter((item) => !item.document.cleared);
   const matches = versions.filter((version) => {
     const { recipe_id, document } = version;
     const searchText = [document.name, document.category, document.description,
@@ -146,7 +146,7 @@ export function RecipeDetail({ store, version, show, edit, back, bake }: {
   const userPolicies = recordsOf(store.records, "policy");
   const policies = userPolicies.length ? userPolicies.map((row) => row.document) : defaultPolicies.map(([title, pattern]) => ({ title, pattern, enabled: true }));
   const quantity = Number(target) > 0 ? Number(target) : null;
-  const history = recordsOf(store.records, "session").flatMap((session) =>
+  const history = recordsOf(store.records, "session").filter((item) => !item.document.cleared).flatMap((session) =>
     session.document.recipes.flatMap((item) => {
       const used = store.library.versions.find((candidate) => candidate.id === item.versionId);
       return used?.recipe_id === version.recipe_id && item.completed.length > 0
