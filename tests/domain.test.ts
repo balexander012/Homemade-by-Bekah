@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, blankRecipe, currentSteps, easternDate, easternTimeExists, eventSchema, formatAmount, newSession, nextStep, occurs, recipeSchema, scale, sharedIngredients, type Entry, type Ingredient, type Version } from "../lib/domain";
+import { addDays, blankRecipe, currentSteps, isLaunchCheckSession, easternDate, easternTimeExists, eventSchema, formatAmount, newSession, nextStep, occurs, recipeSchema, scale, sharedIngredients, type Entry, type Ingredient, type Version } from "../lib/domain";
 import { planTasks } from "../lib/plan";
 
 const id = () => crypto.randomUUID();
@@ -42,6 +42,16 @@ describe("New York planning", () => {
     expect(moved.filter((item) => item.document.title === first.document.title)).toEqual([
       { ...first, document: { ...first.document, date: "2026-11-27", status: "Done" } },
     ]);
+  });
+});
+
+describe("QA record visibility", () => {
+  it("excludes known launch checks without hiding actual baking sessions", () => {
+    expect(isLaunchCheckSession("Launch check — butter batch A")).toBe(true);
+    expect(isLaunchCheckSession("Launch check – two-batch workflow")).toBe(true);
+    expect(isLaunchCheckSession("LAUNCH CHECK: staging")).toBe(true);
+    expect(isLaunchCheckSession("Bake Jumbo Chocolate Chip, S'mores Cookies and Cinnamon Rolls")).toBe(false);
+    expect(isLaunchCheckSession("Launching chocolate cookies")).toBe(false);
   });
 });
 

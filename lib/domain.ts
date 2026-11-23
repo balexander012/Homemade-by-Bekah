@@ -262,6 +262,11 @@ export function nextStep(session: Session, versions: Version[], now: number) {
   return timedOut ?? steps.find((row) => !row.waiting && !ovenBlocked(session, steps, row)) ?? steps[0];
 }
 
+// Do not surface historic QA sessions as real baking production.
+export function isLaunchCheckSession(title: string) {
+  return /^\s*launch check(?:\s|[—–:-]|$)/i.test(title);
+}
+
 export function shotsFor(recipe: Recipe) {
   if (recipe.shots.length) return recipe.shots;
   if (/cake/i.test(recipe.category)) return ["Full cake", "Three-quarter angle", "Sliced interior", "Frosting detail", "Presentation"];
