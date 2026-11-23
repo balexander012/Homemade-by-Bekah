@@ -234,7 +234,8 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
   const event = detail?.screen === "start" || detail?.screen === "event" ?
     recordsOf(store.records, "event").find((item) => item.id === (detail.screen === "start" ? detail.eventId : detail.id)) : undefined;
   const version = store.library.versions.find((item) => item.id === detailId);
-  const sessions = recordsOf(store.records, "session").filter((item) => !isLaunchCheckSession(item.document.title));
+  const allSessions = recordsOf(store.records, "session").filter((item) => !isLaunchCheckSession(item.document.title));
+  const sessions = allSessions.filter((item) => !item.document.cleared);
   const active = sessions.find((item) => item.id === detailId);
 
   useEffect(() => {
@@ -340,7 +341,7 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
     if (detail?.screen === "session" && active) return <FocusedBakingSession key={active.id} entry={active} store={store} now={now} photos={() => open("Photos")} audioReady={audioReady} sound={prepareAudio} exit={() => open("Bake")} />;
     switch (tab) {
       case "Today": return <Today today={today} now={now} store={store} edit={edit} start={start} resume={resume} showCalendar={(date) => { setDay(date); open("Calendar"); }} showPhotos={() => open("Photos")} showRecipes={() => open("Recipes")} />;
-      case "Bake": return <BakeLanding sessions={sessions} now={now} start={() => start(today)} resume={resume} />;
+      case "Bake": return <BakeLanding sessions={allSessions} now={now} start={() => start(today)} resume={resume} store={store} />;
       case "Calendar": return <Calendar day={day} setDay={setDay} today={today} store={store} edit={edit} start={start} />;
       case "Recipes": return <Recipes store={store} show={(id) => navigate({ screen: "recipe", id })} edit={() => navigate({ screen: "recipe-form" })} ideas={() => open("Ideas")} />;
       case "Photos": return <Photos store={store} client={client} workspace={workspace} />;
