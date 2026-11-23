@@ -102,9 +102,8 @@ export function Recipes({ store, show, edit, ideas }: { store: WorkspaceStore; s
         })).sort((left, right) => right.date.localeCompare(left.date));
         const latestBake = related.find((item) => item.completed > 0);
         const correction = pending.find((row) => row.recipe_id === version.recipe_id &&
-          row.payload.recipe.name.toLowerCase().includes("chocolate chip") &&
-          row.payload.recipe.yieldLow === 6) ??
-          pending.find((row) => row.recipe_id === version.recipe_id && row.payload.recipe.yieldLow !== version.document.yieldLow);
+          (row.payload.recipe.yieldLow !== version.document.yieldLow ||
+            row.payload.recipe.yieldHigh !== version.document.yieldHigh));
         const label = version.document.status === "Ready for Testing" ? "Ready for Testing" : version.document.status;
         return <article className="recipe-card panel" key={version.id}>
           <RecipeImage recipeId={version.recipe_id} name={version.document.name} category={version.document.category} />
