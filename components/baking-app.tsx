@@ -24,7 +24,7 @@ const nav = [
   { label: "Bake", icon: ChefHat }, { label: "Calendar", icon: CalendarDays },
   { label: "Photos", icon: Camera },
 ] as const;
-type Tab = typeof nav[number]["label"] | "More";
+type Tab = typeof nav[number]["label"] | "More" | "Ideas";
 type Detail =
   | { screen: "event"; date: string; id?: string; title?: string }
   | { screen: "recipe" | "recipe-form"; id?: string; name?: string }
@@ -32,7 +32,7 @@ type Detail =
   | { screen: "session"; id: string };
 
 const tabPaths: Record<Tab, string> = {
-  Today: "/", Recipes: "/recipes", Bake: "/bake", Calendar: "/planner", Photos: "/photos", More: "/settings",
+  Today: "/", Recipes: "/recipes", Bake: "/bake", Calendar: "/planner", Photos: "/photos", More: "/settings", Ideas: "/ideas",
 };
 function pathFor(tab: Tab, detail?: Detail) {
   if (!detail) return tabPaths[tab];
@@ -77,7 +77,7 @@ function locationState(): { tab: Tab; detail?: Detail } {
   const legacy = window.location.hash.slice(1).toLowerCase();
   const old = ({ today: "Today", recipes: "Recipes", calendar: "Calendar",
     photos: "Photos", more: "More" } as Record<string, Tab>)[legacy];
-  return { tab: current ?? old ?? "Today" };
+  return { tab: old ?? current ?? "Today" };
 }
 
 
@@ -342,9 +342,10 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
       case "Today": return <Today today={today} now={now} store={store} edit={edit} start={start} resume={resume} showCalendar={(date) => { setDay(date); open("Calendar"); }} showPhotos={() => open("Photos")} showRecipes={() => open("Recipes")} />;
       case "Bake": return <BakeLanding sessions={sessions} now={now} start={() => start(today)} resume={resume} />;
       case "Calendar": return <Calendar day={day} setDay={setDay} today={today} store={store} edit={edit} start={start} />;
-      case "Recipes": return <Recipes store={store} show={(id) => navigate({ screen: "recipe", id })} edit={() => navigate({ screen: "recipe-form" })} />;
+      case "Recipes": return <Recipes store={store} show={(id) => navigate({ screen: "recipe", id })} edit={() => navigate({ screen: "recipe-form" })} ideas={() => open("Ideas")} />;
       case "Photos": return <Photos store={store} client={client} workspace={workspace} />;
-      case "More": return <More store={store} client={client} workspace={workspace} theme={theme} setTheme={setTheme} alerts={alerts} alertMessage={alertMessage} toggleAlerts={() => void toggleAlerts()} signOut={signOut} demo={demo} resume={resume}
+      case "Ideas":
+      case "More": return <More section={tab === "Ideas" ? "ideas" : "settings"} store={store} client={client} workspace={workspace} theme={theme} setTheme={setTheme} alerts={alerts} alertMessage={alertMessage} toggleAlerts={() => void toggleAlerts()} signOut={signOut} demo={demo}
         createRecipe={(name) => navigate({ screen: "recipe-form", name })}
         schedule={(title, date) => navigate({ screen: "event", title, date: date ?? today })} />;
     }
@@ -359,7 +360,7 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
       <div className="rail-head"><img className="rail-logo" src="/brand/hb-app-icon.svg" alt="" width="48" height="48" />
         <span className="rail-brand"><strong>Homemade by Bekah</strong><small>Kitchen workspace</small></span></div>
       <nav aria-label="Main navigation">
-        {nav.map(({ label, icon: Icon }) => <button type="button" key={label} aria-current={tab === label ? "page" : undefined} onClick={() => open(label)}>
+        {nav.map(({ label, icon: Icon }) => <button type="button" key={label} aria-current={tab === label || (label === "Recipes" && tab === "Ideas") ? "page" : undefined} onClick={() => open(label)}>
           <Icon size={21} strokeWidth={1.8} aria-hidden="true" /><span>{label === "Today" ? "Home" : label === "Calendar" ? "Planner" : label}</span>
         </button>)}
       </nav>
