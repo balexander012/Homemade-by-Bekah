@@ -13,10 +13,10 @@ import { Button, Field, Heading, Status, message } from "./ui";
 export type Theme = "system" | "light" | "dark";
 const emptyIdea: Doc<"idea"> = { name: "", description: "", category: "Cookies", link: "", notes: "", priority: "Normal", status: "Idea" };
 
-export function More({ store, theme, setTheme, signOut, demo, createRecipe, schedule, resume, client, workspace, alerts, alertMessage, toggleAlerts }: {
+export function More({ store, theme, setTheme, signOut, demo, createRecipe, schedule, client, workspace, alerts, alertMessage, toggleAlerts, section = "settings" }: {
   store: WorkspaceStore; client: SupabaseClient | null; workspace: string; theme: Theme; setTheme: (theme: Theme) => void; signOut: () => void; demo: boolean;
   alerts: boolean; alertMessage: string; toggleAlerts: () => void;
-  createRecipe: (name: string) => void; schedule: (name: string, date?: string) => void; resume: (id: string) => void;
+  createRecipe: (name: string) => void; schedule: (name: string, date?: string) => void; section?: "settings" | "ideas";
 }) {
   const [editor, setEditor] = useState<{ id?: string; document: Doc<"idea"> }>();
   const [image, setImage] = useState<File>();
@@ -25,15 +25,14 @@ export function More({ store, theme, setTheme, signOut, demo, createRecipe, sche
   const [error, setError] = useState("");
   const policies = recordsOf(store.records, "policy");
   const ideas = recordsOf(store.records, "idea").sort((left, right) => left.document.name.localeCompare(right.document.name));
-  const completed = recordsOf(store.records, "session").filter((session) => session.document.status === "Completed");
   const save = (original?: Entry<"idea">) => {
     setEditor(original ? { id: original.id, document: original.document } : { document: emptyIdea });
     setError("");
     setImage(undefined);
   };
   const patch = (partial: Partial<Doc<"idea">>) => { if (editor) setEditor({ ...editor, document: { ...editor.document, ...partial } }); };
-  return <><Heading title="More" /><div className="stack">
-    <section className="panel stack"><div className="panel-head"><div><h2>Recipe ideas</h2><p className="muted" style={{ margin: 0 }}>Products to try, even before there is a recipe.</p></div><Button onClick={() => save()}>Add idea</Button></div>
+  return <><Heading title={section === "ideas" ? "Recipe ideas" : "Settings"} /><div className="stack">
+    {section === "ideas" && <section className="panel stack"><div className="panel-head"><div><h2>Recipe ideas</h2><p className="muted" style={{ margin: 0 }}>Products to try, even before there is a recipe.</p></div><Button onClick={() => save()}>Add idea</Button></div>
       {editor && <form className="row stack" onSubmit={async (e) => {
         e.preventDefault();
         if (busy) return;
@@ -72,13 +71,8 @@ export function More({ store, theme, setTheme, signOut, demo, createRecipe, sche
           <Button tone="secondary" onClick={() => schedule(idea.document.name, idea.document.target)}>Plan a bake</Button>
           <Button tone="ghost" onClick={() => save(idea)}>Edit idea</Button></div>
       </div></details>)}
-    </section>
-    <section className="panel"><details><summary>Completed sessions · {completed.length}</summary>
-      {completed.map((session) => <div className="row line" key={session.id}><p>{session.document.title} · {session.document.date}</p>
-        <Button tone="secondary" onClick={() => resume(session.id)}>View session</Button></div>)}
-      {!completed.length && <p className="muted">Completed sessions appear here.</p>}
-    </details></section>
-    <section className="panel"><details><summary>Ingredient standards</summary><div className="stack">
+    </section>}
+    {section === "settings" && <section className="panel"><details><summary>Ingredient standards</summary><div className="stack">
       <p>Flags prompt a label check. Recipe exceptions are recorded in the recipe revision.</p>
       {policies.length === 0 && <><ul className="stack compact">{defaultPolicies.map(([title]) => <li key={title}>{title}</li>)}</ul>
         <Button tone="secondary" onClick={() => defaultPolicies.forEach(([title, pattern]) => store.put("policy", { title, pattern, enabled: true }))}>Customize standards</Button></>}
@@ -87,8 +81,8 @@ export function More({ store, theme, setTheme, signOut, demo, createRecipe, sche
         <Field label={`Match terms for ${entry.document.title}`}><input key={entry.document.pattern} defaultValue={entry.document.pattern} minLength={2} maxLength={200}
           onBlur={(e) => { if (e.target.value.trim().length >= 2) store.put("policy", { ...entry.document, pattern: e.target.value }, entry.id); }} /></Field>
       </div>)}
-    </div></details></section>
-    <section className="panel stack"><h2>Settings</h2>
+    </div></details></section>}
+    {section === "settings" && <section className="panel stack"><h2>Preferences</h2>
       <Field label="Kitchen theme"><select value={theme} onChange={(e) => setTheme(e.target.value as Theme)}>
         <option value="system">Match device</option><option value="light">Bakery Light</option><option value="dark">Kitchen Dark</option>
       </select></Field>
@@ -102,6 +96,6 @@ export function More({ store, theme, setTheme, signOut, demo, createRecipe, sche
         <p>{Object.keys(store.queue).length > 0 ? "This device has unsynced changes. Sync first to keep them, or sign out and remove the device copy." : "Signing out clears the kitchen data saved on this device."}</p>
         <div className="actions"><Button onClick={signOut}>Confirm sign out</Button><Button tone="secondary" onClick={() => void store.sync()}>Sync now</Button><Button tone="ghost" onClick={() => setConfirm(false)}>Stay signed in</Button></div>
       </div> : <div><Button tone="ghost" onClick={() => setConfirm(true)}>Sign out</Button></div>)}
-    </section>
+    </section>}
   </div></>;
 }
