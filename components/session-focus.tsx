@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChefHat, Clock3, ListChecks, Play, RotateCcw, Timer, Volume2 } from "lucide-react";
-import { currentSteps, formatAmount, modes, nextStep, ovenBlocked, scale, sharedIngredients, timerTime, type Entry, type Session } from "@/lib/domain";
+import { clearBakingSession, currentSteps, formatAmount, modes, nextStep, ovenBlocked, restoreBakingSession, scale, sharedIngredients, timerTime, type Entry, type Session } from "@/lib/domain";
 import type { WorkspaceStore } from "@/lib/use-workspace";
 import { Button, Field, Heading, message } from "./ui";
 import { RecipeImage } from "./recipe-photos";
@@ -10,34 +10,110 @@ import { SideBySideSteps } from "./side-by-side";
 
 type View = "steps" | "prep" | "overview" | "finish";
 
-export function BakeLanding({ sessions, now, start, resume }: {
-  sessions: Entry<"session">[]; now: number; start: () => void; resume: (id: string) => void;
+export function BakeLanding({ sessions, now, start, resume, store }: {
+  sessions: Entry<"session">[]; now: number; start: () => void; resume: (id: string) => void; store: WorkspaceStore;
 }) {
   const [showAllHistory, setShowAllHistory] = useState(false);
-  const active = sessions.filter((item) => item.document.status === "Active");
-  const history = sessions.filter((item) => item.document.status === "Completed").sort((a, b) => b.document.date.localeCompare(a.document.date));
-  return <div className="stack">
+  const [managing, setManaging] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [error, setError] = useState("");
+  const visible = sessions.filter((item) => !item.document.cleared);
+  const active = visible.filter((item) => item.document.status === "Active");
+  const history = visible.filter((item) => item.document.status === "Completed")
+    .sort((a, b) => b.document.date.localeCompare(a.document.date));
+  const cleared = sessions.filter((item) => item.document.cleared)
+    .sort((a, b) => b.document.date.localeCompare(a.document.date));
+  const chosen = visible.filter((item) => selected.includes(item.id));
+  const toggleSelection = (id: string) => {
+    setSelected((values) => values.includes(id) ? values.filter((value) => value !== id) : [...values, id]);
+    setConfirmClear(false);
+  };
+  const stopManaging = () => {
+    setManaging(false); setSelected([]); setConfirmClear(false); setError("");
+  };
+  const clearSelected = () => {
+    try {
+      for (const item of chosen) store.put("session", clearBakingSession(item.document), item.id);
+      stopManaging();
+    } catch (cause) { setError(message(cause)); }
+  };
+  const restore = (item: Entry<"session">) => {
+    try { setError(""); store.put("session", restoreBakingSession(item.document), item.id); }
+    catch (cause) { setError(message(cause)); }
+  };
+  const sessionRow = (item: Entry<"session">, finished: boolean) => {
+    const timers = item.document.timers.filter((timer) => !timer.cancelled);
+    const next = timers.sort((a, b) => a.deadline - b.deadline)[0];
+    return <div className="bake-manage-row" key={item.id}>
+      {managing && <label className="bake-manage-select">
+        <input type="checkbox" checked={selected.includes(item.id)}
+          aria-label={"Select " + item.document.title} onChange={() => toggleSelection(item.id)} />
+      </label>}
+      <button className="bake-session-row" type="button" onClick={() => managing ? toggleSelection(item.id) : resume(item.id)}>
+        <span className="bake-session-symbol">{finished ? <Check size={18}/> : <Play size={20}/>}</span>
+        <span className="bake-session-copy">
+          <strong>{item.document.title}</strong>
+          <small>{item.document.date} · {item.document.recipes.length} recipes
+            {next && !finished ? " · Timer " + timerTime(next.deadline - now) : ""}</small>
+        </span>
+        {managing ? <span className="bake-selected-caption">{selected.includes(item.id) ? "Selected" : "Select"}</span>
+          : <ArrowRight size={18} aria-hidden="true" />}
+      </button>
+    </div>;
+  };
+  return <div className="stack bake-landing">
     <Heading title="Bake" detail="Your kitchen"><Button onClick={start}><ChefHat size={18} aria-hidden="true" /> New baking session</Button></Heading>
-    {active.length > 0 ? <section className="stack compact"><h2>Continue baking</h2>
-      <div className="bake-session-list">{active.map((item) => {
-        const timers = item.document.timers.filter((timer) => !timer.cancelled);
-        const next = timers.sort((a, b) => a.deadline - b.deadline)[0];
-        return <button className="bake-session-row" key={item.id} onClick={() => resume(item.id)}>
-          <span className="bake-session-symbol"><Play size={20} /></span>
-          <span className="bake-session-copy"><strong>{item.document.title}</strong><small>{item.document.recipes.length} recipes · {item.document.date}{next ? " · Next timer " + timerTime(next.deadline - now) : ""}</small></span>
-          <ArrowRight size={18} aria-hidden="true" />
-        </button>;
-      })}</div></section> :
-      <section className="panel empty-state tinted"><ChefHat size={28} aria-hidden="true" /><h2 className="display">Ready for your next bake?</h2>
-        <p className="muted">Choose a recipe, prepare ingredients, and follow each step in the kitchen.</p><Button onClick={start}>Start baking</Button></section>}
-    {history.length > 0 && <section className="stack compact"><h2>Recent sessions</h2>
-      <div className="bake-session-list">{history.slice(0, showAllHistory ? history.length : 8).map((item) =>
-        <button className="bake-session-row" key={item.id} onClick={() => resume(item.id)}>
-          <span className="bake-session-symbol"><Check size={18} /></span><span className="bake-session-copy"><strong>{item.document.title}</strong><small>{item.document.date} · {item.document.recipes.length} recipes</small></span><ArrowRight size={18}/></button>)}</div>
-      {history.length > 8 && <Button tone="ghost" onClick={() => setShowAllHistory(!showAllHistory)}>
+    {(visible.length > 0 || managing) && <div className="bake-manage-bar">
+      <p className="muted">Only real baking sessions should stay in your kitchen history.</p>
+      <Button tone="secondary" onClick={() => { if (managing) stopManaging(); else setManaging(true); }}>
+        {managing ? "Done managing" : "Manage sessions"}
+      </Button>
+    </div>}
+    {error && <p className="notice error" role="alert">{error}</p>}
+    {managing && <section className="bake-manage-tools" aria-label="Clear test baking sessions">
+      <p>Select the sessions you were testing. Recipes and saved photos are not deleted.</p>
+      <div className="actions">
+        <Button tone="secondary" disabled={!selected.length} onClick={() => setConfirmClear(true)}>
+          Clear selected ({selected.length})
+        </Button>
+        {selected.length > 0 && <Button tone="ghost" onClick={() => { setSelected([]); setConfirmClear(false); }}>Deselect all</Button>}
+      </div>
+      {confirmClear && <div className="bake-clear-confirm" role="group" aria-label="Confirm clearing sessions">
+        <strong>Clear {chosen.length} baking session{chosen.length === 1 ? "" : "s"}?</strong>
+        <p>These sessions disappear from Today, Bake, Photos and recipe activity. Running timers stop. You can restore the sessions later.</p>
+        <ul>{chosen.map((item) => <li key={item.id}>{item.document.title} · {item.document.date}</li>)}</ul>
+        <div className="actions">
+          <Button onClick={clearSelected} disabled={!chosen.length}>Yes, clear {chosen.length}</Button>
+          <Button tone="ghost" onClick={() => setConfirmClear(false)}>Cancel</Button>
+        </div>
+      </div>}
+    </section>}
+    {active.length > 0 ? <section className="stack compact">
+      <h2>Continue baking</h2>
+      <div className="bake-session-list">{active.map((item) => sessionRow(item, false))}</div>
+    </section> : !history.length ? <section className="panel empty-state tinted">
+      <ChefHat size={28} aria-hidden="true"/>
+      <h2 className="display">Ready for your next bake?</h2>
+      <p className="muted">Choose a recipe, prepare ingredients, and follow each step in the kitchen.</p>
+      <Button onClick={start}>Start baking</Button>
+    </section> : null}
+    {history.length > 0 && <section className="stack compact">
+      <h2>Recent sessions</h2>
+      <div className="bake-session-list">{history.slice(0, managing || showAllHistory ? history.length : 8)
+        .map((item) => sessionRow(item, true))}</div>
+      {!managing && history.length > 8 && <Button tone="ghost" onClick={() => setShowAllHistory(!showAllHistory)}>
         {showAllHistory ? "Show recent sessions" : "Show all " + history.length + " sessions"}
       </Button>}
     </section>}
+    {cleared.length > 0 && <details className="bake-cleared-sessions">
+      <summary>Cleared sessions ({cleared.length})</summary>
+      <p className="muted">Test sessions are hidden from the active workspace. Restore a session to see its saved progress and photos again.</p>
+      <div className="bake-session-list">{cleared.map((item) => <div className="bake-cleared-row" key={item.id}>
+        <span><strong>{item.document.title}</strong><small>{item.document.date} · {item.document.recipes.length} recipes</small></span>
+        <Button tone="secondary" onClick={() => restore(item)}>Restore</Button>
+      </div>)}</div>
+    </details>}
   </div>;
 }
 
