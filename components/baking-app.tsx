@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { BookOpen, CalendarDays, Camera, ChefHat, LayoutDashboard, Settings2, ArrowRight, Clock3 } from "lucide-react";
 import type { Session as AuthSession, SupabaseClient } from "@supabase/supabase-js";
-import { easternDate, timerTime, type Entry } from "@/lib/domain";
+import { easternDate, isLaunchCheckSession, timerTime, type Entry } from "@/lib/domain";
 import { authStorageKey, browserClient, recordsOf } from "@/lib/store";
 import { useWorkspace } from "@/lib/use-workspace";
 import { PhotoContext, usePhotoStore } from "@/lib/recipe-photos";
@@ -234,7 +234,7 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
   const event = detail?.screen === "start" || detail?.screen === "event" ?
     recordsOf(store.records, "event").find((item) => item.id === (detail.screen === "start" ? detail.eventId : detail.id)) : undefined;
   const version = store.library.versions.find((item) => item.id === detailId);
-  const sessions = recordsOf(store.records, "session");
+  const sessions = recordsOf(store.records, "session").filter((item) => !isLaunchCheckSession(item.document.title));
   const active = sessions.find((item) => item.id === detailId);
 
   useEffect(() => {
