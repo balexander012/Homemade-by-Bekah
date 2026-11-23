@@ -169,13 +169,39 @@ export function scale(ingredient: Ingredient, recipe: Pick<Recipe, "yieldLow" | 
   };
 }
 
+// Cooking units use readable fractions when the saved amount is genuinely close
+// to a standard fraction. Values that do not match keep their original precision.
+const cookingFractions: [number, string][] = [
+  [1 / 16, "⅟₁₆"], [1 / 8, "⅛"], [3 / 16, "³⁄₁₆"], [1 / 4, "¼"],
+  [1 / 3, "⅓"], [3 / 8, "⅜"], [7 / 16, "⁷⁄₁₆"], [1 / 2, "½"],
+  [9 / 16, "⁹⁄₁₆"], [5 / 8, "⅝"], [2 / 3, "⅔"], [11 / 16, "¹¹⁄₁₆"],
+  [3 / 4, "¾"], [13 / 16, "¹³⁄₁₆"], [7 / 8, "⅞"], [15 / 16, "¹⁵⁄₁₆"],
+];
+const kitchenUnit = (unit: string, quantity: Decimal) => {
+  const normalized = unit.trim().toLowerCase();
+  const names = { cup: "cup", cups: "cup", teaspoon: "teaspoon", teaspoons: "teaspoon",
+    tablespoon: "tablespoon", tablespoons: "tablespoon" } as Record<string, string>;
+  const base = names[normalized];
+  if (!base) return unit;
+  const count = quantity.eq(1) || quantity.lt(1) ? base : base + "s";
+  return unit.trim() && unit[0] === unit[0].toUpperCase() ? count[0].toUpperCase() + count.slice(1) : count;
+};
 export function formatAmount(value: ReturnType<typeof scale>) {
   if (value.amount === null) return "Check amount";
+  const isKitchenMeasure = /^(cups?|teaspoons?|tablespoons?|tsp|tbsp)$/i.test(value.unit.trim());
   const format = (number: Decimal) => {
+    if (isKitchenMeasure && number.gte(0)) {
+      const whole = number.floor();
+      const fraction = number.sub(whole).toNumber();
+      if (number.isInteger()) return whole.toFixed();
+      const hit = cookingFractions.find(([value]) => Math.abs(fraction - value) < 0.00001);
+      if (hit) return (whole.isZero() ? "" : whole.toFixed()) + hit[1];
+    }
     const rounded = number.toSignificantDigits(4).toFixed();
     return number.eq(rounded) ? rounded : `≈ ${rounded}`;
   };
-  return `${format(value.amount)}${value.upper && !value.amount.eq(value.upper) ? ` to ${format(value.upper)}` : ""} ${value.unit}`.trim();
+  const range = value.upper && !value.amount.eq(value.upper) ? ` to ${format(value.upper)}` : "";
+  return `${format(value.amount)}${range} ${kitchenUnit(value.unit, value.upper ?? value.amount)}`.trim();
 }
 
 export function sharedIngredients(selections: Selection[], versions: Version[]) {
