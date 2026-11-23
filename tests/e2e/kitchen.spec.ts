@@ -268,7 +268,7 @@ test("photo workspace shows one batch at a time and avoids oversized panels", as
   await expect(page.locator(".photos-workspace")).toHaveCount(1);
   await expect(page.locator(".photos-shot-option")).toHaveCount(6);
   await expect(page.locator(".photos-upload-fields")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Upload", exact: true })).toBeDisabled();
+  await expect(page.getByText("Connect Supabase Storage to upload photos.")).toBeVisible();
   await page.getByRole("button", { name: /Broken-open texture/ }).click();
   await expect(page.getByRole("combobox", { name: "Broken-open texture status" })).toHaveValue("Not started");
   await page.getByRole("combobox", { name: "Broken-open texture status" }).selectOption("Captured");
