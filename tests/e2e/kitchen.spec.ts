@@ -47,6 +47,7 @@ test("plans and reschedules batches, then resumes state and timers after an offl
   await page.getByRole("button", { name: "Begin session" }).click();
   await expect(page.getByText("50 g", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Complete step" }).click();
+  await page.getByRole("button", { name: "Set timer" }).click();
   await page.getByRole("button", { name: "Start timer" }).click();
   await expect(page.locator(".bake-timer-toggle")).toContainText("active timer");
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
@@ -235,6 +236,10 @@ test("keeps active baking steps focused with accessible preparation and overview
   await page.getByRole("button", { name: "Begin session" }).click();
   await expect(page.locator(".bake-current-step")).toBeVisible();
   await expect(page.locator(".bake-current-step")).toContainText("Mix the butter until smooth.");
+  await expect(page.getByRole("heading", { name: "Baking session", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Complete step" })).toBeVisible();
+  await expect(page.locator(".bake-step-actions")).toHaveCSS("position", "sticky");
+  await expect(page.getByRole("button", { name: "Set timer" })).toBeVisible();
   const sections = page.getByRole("navigation", { name: "Baking session sections" });
   await sections.getByRole("button", { name: "Prep" }).click();
   await expect(page.getByRole("heading", { name: "Gather ingredients" })).toBeVisible();
