@@ -12,6 +12,7 @@ type View = "steps" | "prep" | "overview" | "finish";
 export function BakeLanding({ sessions, now, start, resume }: {
   sessions: Entry<"session">[]; now: number; start: () => void; resume: (id: string) => void;
 }) {
+  const [showAllHistory, setShowAllHistory] = useState(false);
   const active = sessions.filter((item) => item.document.status === "Active");
   const history = sessions.filter((item) => item.document.status === "Completed").sort((a, b) => b.document.date.localeCompare(a.document.date));
   return <div className="stack">
@@ -29,9 +30,12 @@ export function BakeLanding({ sessions, now, start, resume }: {
       <section className="panel empty-state tinted"><ChefHat size={28} aria-hidden="true" /><h2 className="display">Ready for your next bake?</h2>
         <p className="muted">Choose a recipe, prepare ingredients, and follow each step in the kitchen.</p><Button onClick={start}>Start baking</Button></section>}
     {history.length > 0 && <section className="stack compact"><h2>Recent sessions</h2>
-      <div className="bake-session-list">{history.slice(0, 12).map((item) =>
+      <div className="bake-session-list">{history.slice(0, showAllHistory ? history.length : 8).map((item) =>
         <button className="bake-session-row" key={item.id} onClick={() => resume(item.id)}>
           <span className="bake-session-symbol"><Check size={18} /></span><span className="bake-session-copy"><strong>{item.document.title}</strong><small>{item.document.date} · {item.document.recipes.length} recipes</small></span><ArrowRight size={18}/></button>)}</div>
+      {history.length > 8 && <Button tone="ghost" onClick={() => setShowAllHistory(!showAllHistory)}>
+        {showAllHistory ? "Show recent sessions" : "Show all " + history.length + " sessions"}
+      </Button>}
     </section>}
   </div>;
 }
