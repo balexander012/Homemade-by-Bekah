@@ -1,0 +1,272 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChefHat, Clock3, ListChecks, PauseCircle, Play, RotateCcw, Timer, Volume2 } from "lucide-react";
+import { currentSteps, formatAmount, nextStep, ovenBlocked, scale, sharedIngredients, timerTime, type Entry, type Session } from "@/lib/domain";
+import type { WorkspaceStore } from "@/lib/use-workspace";
+import { Button, Field, Heading, message } from "./ui";
+import { RecipeImage } from "./recipe-photos";
+
+type View = "steps" | "prep" | "overview" | "finish";
+
+export function BakeLanding({ sessions, now, start, resume }: {
+  sessions: Entry<"session">[]; now: number; start: () => void; resume: (id: string) => void;
+}) {
+  const active = sessions.filter((item) => item.document.status === "Active");
+  const history = sessions.filter((item) => item.document.status === "Completed").sort((a, b) => b.document.date.localeCompare(a.document.date));
+  return <div className="stack">
+    <Heading title="Bake" detail="Your kitchen"><Button onClick={start}><ChefHat size={18} aria-hidden="true" /> New baking session</Button></Heading>
+    {active.length > 0 ? <section className="stack compact"><h2>Continue baking</h2>
+      <div className="bake-session-list">{active.map((item) => {
+        const timers = item.document.timers.filter((timer) => !timer.cancelled);
+        const next = timers.sort((a, b) => a.deadline - b.deadline)[0];
+        return <button className="bake-session-row" key={item.id} onClick={() => resume(item.id)}>
+          <span className="bake-session-symbol"><Play size={20} /></span>
+          <span className="bake-session-copy"><strong>{item.document.title}</strong><small>{item.document.recipes.length} recipes · {item.document.date}{next ? " · Next timer " + timerTime(next.deadline - now) : ""}</small></span>
+          <ArrowRight size={18} aria-hidden="true" />
+        </button>;
+      })}</div></section> :
+      <section className="panel empty-state tinted"><ChefHat size={28} aria-hidden="true" /><h2 className="display">Ready for your next bake?</h2>
+        <p className="muted">Choose a recipe, prepare ingredients, and follow each step in the kitchen.</p><Button onClick={start}>Start baking</Button></section>}
+    {history.length > 0 && <section className="stack compact"><h2>Recent sessions</h2>
+      <div className="bake-session-list">{history.slice(0, 12).map((item) =>
+        <button className="bake-session-row" key={item.id} onClick={() => resume(item.id)}>
+          <span className="bake-session-symbol"><Check size={18} /></span><span className="bake-session-copy"><strong>{item.document.title}</strong><small>{item.document.date} · {item.document.recipes.length} recipes</small></span><ArrowRight size={18}/></button>)}</div>
+    </section>}
+  </div>;
+}
+
+export function FocusedBakingSession({ entry, store, now, photos, sound, audioReady, exit }: {
+  entry: Entry<"session">; store: WorkspaceStore; now: number; photos: () => void; sound: () => void; audioReady: boolean; exit: () => void;
+}) {
+  const session = entry.document;
+  const versions = store.library.versions;
+  const [view, setView] = useState<View>("steps");
+  const [showTimers, setShowTimers] = useState(false);
+  const [timerMinutes, setTimerMinutes] = useState("");
+  const [error, setError] = useState("");
+  const [confirmFinish, setConfirmFinish] = useState(false);
+  const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
+  const active = session.status === "Active";
+  const recipeSteps = currentSteps(session, versions, now);
+  const suggested = nextStep(session, versions, now);
+  const focused = recipeSteps.find((item) => item.version.id === session.focusVersionId) ?? suggested ?? recipeSteps[0];
+  const total = session.recipes.reduce((count, item) => count + (versions.find((v) => v.id === item.versionId)?.document.steps.length ?? 0), 0);
+  const completed = session.recipes.reduce((count, item) => count + item.completed.length, 0);
+  const allDone = total > 0 && completed >= total;
+  const timers = session.timers.filter((timer) => !timer.cancelled).sort((a, b) => a.deadline - b.deadline);
+  const expired = timers.filter((timer) => timer.deadline <= now);
+  const ingredients = sharedIngredients(session.recipes, versions);
+  const equipment = [...new Set(session.recipes.flatMap((item) => versions.find((v) => v.id === item.versionId)?.document.equipment ?? []))];
+  const save = (patch: Partial<Session>) => {
+    try { setError(""); store.put("session", { ...session, ...patch }, entry.id); }
+    catch (cause) { setError(message(cause)); }
+  };
+  const setFocus = (id: string) => {
+    save({ focusVersionId: id });
+    setTimerMinutes("");
+    setView("steps");
+  };
+  const completeStep = () => {
+    if (!focused || !active) return;
+    const { version, step } = focused;
+    save({
+      recipes: session.recipes.map((item) => item.versionId === version.id ?
+        { ...item, completed: item.completed.includes(step.id) ? item.completed : [...item.completed, step.id] } : item),
+      timers: session.timers.map((item) => item.versionId === version.id && item.stepId === step.id ? { ...item, cancelled: true } : item),
+      focusVersionId: undefined,
+    });
+    setTimerMinutes("");
+  };
+  const undo = (versionId: string) => save({
+    recipes: session.recipes.map((item) => item.versionId === versionId && item.completed.length ?
+      { ...item, completed: item.completed.slice(0, -1) } : item),
+    focusVersionId: versionId,
+  });
+  const togglePrep = (key: string) => save({ prepared: session.prepared.includes(key) ?
+    session.prepared.filter((item) => item !== key) : [...session.prepared, key] });
+  const startTimer = () => {
+    if (!focused) return;
+    const minutes = Number(timerMinutes || focused.step.minutes || 0);
+    if (!Number.isFinite(minutes) || minutes < 0.01 || minutes > 10080) {
+      setError("Enter a timer between 0.01 and 10,080 minutes."); return;
+    }
+    sound();
+    const start = Date.now();
+    save({ timers: [...session.timers, { id: crypto.randomUUID(), versionId: focused.version.id,
+      stepId: focused.step.id, label: focused.version.document.name + " · Step " +
+        (focused.version.document.steps.indexOf(focused.step) + 1), start,
+      deadline: start + Math.round(minutes * 60000), cancelled: false }] });
+    setShowTimers(true);
+  };
+  const updateTimer = (id: string, action: "add" | "cancel") => save({ timers: session.timers.map((timer) =>
+    timer.id === id ? action === "cancel" ? { ...timer, cancelled: true } : { ...timer, deadline: timer.deadline + 60000 } : timer) });
+  const finish = () => {
+    if (!allDone) return;
+    save({ status: "Completed", timers: session.timers.map((timer) => ({ ...timer, cancelled: true })) });
+    setConfirmFinish(false);
+    setView("finish");
+  };
+  useEffect(() => {
+    if (!active || !("wakeLock" in navigator)) return;
+    let stopped = false;
+    let lock: WakeLockSentinel | undefined;
+    const wake = async () => {
+      if (stopped || document.visibilityState !== "visible" || (lock && !lock.released)) return;
+      try {
+        const requested = await navigator.wakeLock.request("screen");
+        if (stopped) await requested.release(); else lock = requested;
+      } catch { /* Browsers may deny the screen wake lock. */ }
+    };
+    void wake();
+    document.addEventListener("visibilitychange", wake);
+    return () => { stopped = true; document.removeEventListener("visibilitychange", wake); void lock?.release(); };
+  }, [active]);
+
+  return <div className="bake-focus stack">
+    <header className="bake-topline">
+      <button className="bake-back" type="button" onClick={exit} aria-label="Leave baking session"><ArrowLeft size={20}/><span>All sessions</span></button>
+      <span className="bake-state">{active ? "In progress" : "Completed"}</span>
+    </header>
+    <div className="bake-title-row">
+      <div><p className="eyebrow">{session.date} · {session.recipes.length} recipes</p><h1>{session.title}</h1></div>
+      {active && <Button tone="ghost" onClick={exit}><PauseCircle size={19}/> Leave and resume later</Button>}
+    </div>
+    <div className="bake-progress-head"><strong>{completed} of {total} steps complete</strong><span>{total ? Math.round(completed / total * 100) : 0}%</span></div>
+    <div className="bake-progress-track" role="progressbar" aria-label="Baking progress" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={total || 1}>
+      <span style={{ width: (total ? completed / total * 100 : 0) + "%" }}/></div>
+    <nav className="bake-subnav" aria-label="Baking session sections">
+      {([["steps", "Steps", BookOpen], ["prep", "Prep", ListChecks], ["overview", "Overview", ChefHat], ["finish", "Finish", Check]] as const).map(([key, label, Icon]) =>
+        <button type="button" key={key} aria-current={view === key ? "page" : undefined} onClick={() => setView(key)}>
+          <Icon size={18} aria-hidden="true"/>{label}</button>)}
+    </nav>
+    {error && <p className="notice error" role="alert">{error}</p>}
+    {timers.length > 0 && <section className="bake-timer-section">
+      <button type="button" className="bake-timer-toggle" onClick={() => setShowTimers(!showTimers)} aria-expanded={showTimers}>
+        <Timer size={19} aria-hidden="true"/><strong>{expired.length ? expired.length + " timer ready" : timers.length + " active timer" + (timers.length === 1 ? "" : "s")}</strong>
+        <span>{timerTime(timers[0].deadline - now)}{timers[0].deadline <= now ? " overdue" : " remaining"}</span>
+        <span aria-hidden="true">{showTimers ? "−" : "+"}</span>
+      </button>
+      {showTimers && <div className="bake-timer-list">{timers.map((timer) => <div className={"bake-timer-item" + (timer.deadline <= now ? " is-ready" : "")} key={timer.id}>
+        <div><strong>{timer.label}</strong><small>{timer.deadline <= now ? "Check the bake" : "Counting down"}</small></div>
+        <strong className="bake-timer-clock">{timerTime(timer.deadline - now)}</strong>
+        {active && <div className="actions"><Button tone="secondary" onClick={() => updateTimer(timer.id, "add")}>+1 min</Button>
+          <Button tone="ghost" onClick={() => updateTimer(timer.id, "cancel")}>{timer.deadline <= now ? "Dismiss" : "Cancel"}</Button></div>}
+      </div>)}</div>}
+    </section>}
+    {view === "steps" && <>
+      {recipeSteps.length > 1 && <div className="bake-recipe-switch" aria-label="Choose active recipe">
+        {recipeSteps.map((item) => <button type="button" key={item.version.id}
+          aria-pressed={focused?.version.id === item.version.id} onClick={() => setFocus(item.version.id)}>
+          {item.version.document.name}<span>{item.progress.completed.length}/{item.version.document.steps.length}</span></button>)}
+      </div>}
+      {focused ? <article className="bake-current-step">
+        <div className="bake-step-meta"><span className="eyebrow">{focused.version.document.name}</span>
+          <span className="bake-kind">{focused.step.kind}</span></div>
+        <p className="bake-step-count">Step {focused.version.document.steps.indexOf(focused.step) + 1} of {focused.version.document.steps.length}</p>
+        <h2 className="bake-instruction">{focused.step.instruction}</h2>
+        {(focused.step.temperature || focused.step.minutes) && <p className="bake-step-specs">
+          {focused.step.temperature ? focused.step.temperature + " °F" : ""}
+          {focused.step.temperature && focused.step.minutes ? " · " : ""}
+          {focused.step.minutes ? focused.step.minutes + " minutes" : ""}</p>}
+        {focused.progress.target && focused.step.kind === "Oven" && <p className="notice warning">Batch size was changed. Check pan capacity and baking time.</p>}
+        {ovenBlocked(session, recipeSteps, focused) && <p className="notice warning">Oven status needs attention. Check the oven before starting this step.</p>}
+        {focused.waiting && focused.timer && <p className="bake-waiting"><Clock3 size={20} aria-hidden="true"/> Waiting on timer · {timerTime(focused.timer.deadline - now)}</p>}
+        {focused.version.document.ingredients.filter((ingredient) => focused.step.ingredients.includes(ingredient.id)).length > 0 && <div className="bake-step-ingredients">
+          <h3>For this step</h3>
+          {focused.version.document.ingredients.filter((ingredient) => focused.step.ingredients.includes(ingredient.id)).map((ingredient) => {
+            const amount = scale(ingredient, focused.version.document, focused.progress.target);
+            return <div className="bake-ingredient" key={ingredient.id}>
+              <span>{ingredient.name}{ingredient.preparation ? " · " + ingredient.preparation : ""}</span>
+              <strong>{formatAmount(amount)}</strong>
+              {amount.warning && <small className="warning">{amount.warning}</small>}
+            </div>;
+          })}</div>}
+        {active && <div className="bake-step-tools">
+          <div className="bake-timer-form"><Field label="Timer (minutes)"><input type="number" min="0.01" max="10080" step="any" inputMode="decimal"
+            placeholder={focused.step.minutes ? String(focused.step.minutes) : "Minutes"} value={timerMinutes} onChange={(event) => setTimerMinutes(event.target.value)}/></Field>
+            <Button tone="secondary" onClick={startTimer}><Timer size={18} aria-hidden="true"/> Start timer</Button></div>
+          <Button tone="ghost" onClick={() => {
+            if (!("speechSynthesis" in window)) return;
+            window.speechSynthesis.cancel();
+            const amounts = focused.version.document.ingredients.filter((ingredient) => focused.step.ingredients.includes(ingredient.id))
+              .map((ingredient) => formatAmount(scale(ingredient, focused.version.document, focused.progress.target)) + " " + ingredient.name).join(". ");
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(focused.step.instruction + ". " + amounts));
+          }}><Volume2 size={18} aria-hidden="true"/> Read aloud</Button>
+        </div>}
+      </article> : <section className="panel empty-state tinted"><Check size={30}/><h2>All recipe steps are complete</h2>
+        <p>Review your results, save notes, and finish the session.</p><Button onClick={() => setView("finish")}>Review and finish</Button></section>}
+      {active && focused && <div className="bake-step-actions">
+        <Button tone="ghost" disabled={!focused.progress.completed.length} onClick={() => undo(focused.version.id)}><RotateCcw size={18}/> Undo step</Button>
+        <Button onClick={completeStep}>Complete step <Check size={19}/></Button>
+      </div>}
+    </>}
+    {view === "prep" && <div className="bake-prep-grid">
+      <section className="panel stack compact"><h2>Gather ingredients</h2><p className="muted">Check off each ingredient as it is ready.</p>
+        {ingredients.map((row) => <div className="bake-prep-row" key={row.key}><label className="check">
+          <input type="checkbox" disabled={!active} checked={session.prepared.includes(row.key)} onChange={() => togglePrep(row.key)}/>
+          <span><strong>{row.name}</strong><small>{row.total ? formatAmount(row.total) : "Check amount"}{row.preparation ? " · " + row.preparation : ""}</small></span>
+        </label><details><summary>Recipe breakdown</summary>{row.allocations.map((item, index) =>
+          <p className="muted" key={index}>{item.recipe} · {formatAmount(item.measurement)}</p>)}</details></div>)}
+      </section>
+      <section className="panel stack compact"><h2>Equipment and oven</h2>
+        {equipment.map((name) => <label className="check bake-prep-row" key={name}><input type="checkbox" disabled={!active}
+          checked={session.prepared.includes("equipment:" + name.toLowerCase())}
+          onChange={() => togglePrep("equipment:" + name.toLowerCase())}/><span>{name}</span></label>)}
+        {equipment.length === 0 && <p className="muted">No specific equipment listed.</p>}
+        <Field label="Oven status"><select disabled={!active} value={session.oven.phase}
+          onChange={(e) => save({ oven: { ...session.oven, phase: e.target.value as Session["oven"]["phase"] } })}>
+          {["Available", "Preheating", "Occupied"].map((name) => <option key={name}>{name}</option>)}</select></Field>
+        <Field label="Oven temperature (°F)"><input type="number" min="75" max="650" disabled={!active}
+          key={session.oven.temperature ?? "unset"} defaultValue={session.oven.temperature ?? ""}
+          onBlur={(e) => save({ oven: { ...session.oven, temperature: e.target.value ? Number(e.target.value) : undefined } })}/></Field>
+        <Field label="Oven and tray notes"><textarea disabled={!active} key={session.oven.notes} defaultValue={session.oven.notes}
+          onBlur={(e) => save({ oven: { ...session.oven, notes: e.target.value } })}/></Field>
+      </section>
+    </div>}
+    {view === "overview" && <section className="stack compact"><h2>Recipe progress</h2>
+      {session.recipes.map((item) => {
+        const version = versions.find((v) => v.id === item.versionId);
+        if (!version) return <p key={item.versionId} className="notice warning">A recipe version is unavailable.</p>;
+        const count = version.document.steps.length;
+        return <div key={item.versionId} className="bake-overview-row">
+          <RecipeImage recipeId={version.recipe_id} name={version.document.name} size="small"/>
+          <div className="bake-overview-copy"><strong>{version.document.name}</strong><small>{item.completed.length} of {count} steps</small>
+            <div className="bake-progress-track"><span style={{width: (count ? item.completed.length / count * 100 : 0) + "%"}}/></div></div>
+          <div className="actions">{active && item.completed.length < count && <Button tone="secondary" onClick={() => setFocus(version.id)}>Continue</Button>}
+            {active && item.completed.length > 0 && <Button tone="ghost" onClick={() => undo(version.id)}>Undo</Button>}</div>
+        </div>;
+      })}
+    </section>}
+    {view === "finish" && <section className="stack"><h2>Wrap up your bake</h2>
+      <p className="muted">Keep a record of what worked and what you would change next time.</p>
+      {session.recipes.map((item) => {
+        const version = versions.find((v) => v.id === item.versionId);
+        if (!version) return null;
+        const feedback = session.feedback[version.id];
+        return <div className="panel stack compact" key={version.id}>
+          <h3>{version.document.name}</h3>
+          <Field label="Tasting and baking notes"><textarea key={version.id + (feedback?.notes ?? "")}
+            defaultValue={noteDraft[version.id] ?? feedback?.notes ?? ""} placeholder="Appearance, texture, flavor, what to adjust..."
+            disabled={!active} onBlur={(e) => {
+              const value = e.target.value;
+              if (value === (feedback?.notes ?? "")) return;
+              setNoteDraft((current) => ({ ...current, [version.id]: value }));
+              save({ feedback: { ...session.feedback, [version.id]: {
+                notes: value, worked: feedback?.worked ?? "", change: feedback?.change ?? "", again: feedback?.again ?? ""
+              } } });
+            }}/></Field>
+        </div>;
+      })}
+      <div className="actions"><Button tone="secondary" onClick={photos}>Open photos</Button>
+        {active && (allDone ? <Button onClick={() => setConfirmFinish(true)}>Complete baking session</Button> :
+          <Button onClick={() => setView("steps")}>Return to unfinished steps</Button>)}
+      </div>
+      {confirmFinish && <div className="panel stack"><p>Mark this baking session complete? Active timers will be dismissed.</p>
+        <div className="actions"><Button onClick={finish}>Yes, finish session</Button>
+          <Button tone="ghost" onClick={() => setConfirmFinish(false)}>Keep baking</Button></div></div>}
+      {!active && <p className="notice success">Baking session completed. Your notes and progress are saved.</p>}
+    </section>}
+    <p className="bake-footnote">Progress saves to your kitchen workspace. You can leave and reopen this session at any time.</p>
+  </div>;
+}
