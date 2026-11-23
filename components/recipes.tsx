@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { BookOpen, CheckCircle2, LayoutGrid, List, Plus, Search, Star } from "lucide-react";
+import { BookOpen, CheckCircle2, LayoutGrid, List, Plus, Star } from "lucide-react";
 import { activeVersions, blankRecipe, categories, canBake, dateLabel, formatAmount, recipeStatuses, scale, type Recipe, type Version } from "@/lib/domain";
 import { readRecipeFile, sourceFileTypes } from "@/lib/read-recipe-file";
 import { parseRecipeImport } from "@/lib/recipe-import";
@@ -147,6 +147,13 @@ export function RecipeDetail({ store, version, show, edit, back, bake }: {
   const userPolicies = recordsOf(store.records, "policy");
   const policies = userPolicies.length ? userPolicies.map((row) => row.document) : defaultPolicies.map(([title, pattern]) => ({ title, pattern, enabled: true }));
   const quantity = Number(target) > 0 ? Number(target) : null;
+  const history = recordsOf(store.records, "session").flatMap((session) =>
+    session.document.recipes.flatMap((item) => {
+      const used = store.library.versions.find((candidate) => candidate.id === item.versionId);
+      return used?.recipe_id === version.recipe_id && item.completed.length > 0
+        ? [{ sessionId: session.id, date: session.document.date, versionId: item.versionId, progress: item.completed.length }] : [];
+    })).sort((a, b) => b.date.localeCompare(a.date));
+  const lastBake = history[0];
   const run = async (action: () => Promise<unknown>) => {
     setError("");
     try { await action(); } catch (cause) { setError(message(cause)); }
@@ -167,6 +174,17 @@ export function RecipeDetail({ store, version, show, edit, back, bake }: {
       <Button onClick={() => void run(async () => { await store.approve(version); setConfirmation(false); })}>Make preferred</Button>
       <Button tone="ghost" onClick={() => setConfirmation(false)}>Cancel</Button>
     </div></section>}
+    {recipe.status === "Draft" && <div className="recipe-detail-draft">
+      <strong>This is a working draft, not a published baking formula.</strong>
+      <span>Review new submissions under Recipes to review. Finalized revisions become ready to bake only when the quantities, yield and instructions agree.</span>
+    </div>}
+    {lastBake && <section className="recipe-detail-history" aria-label="Recent baking activity">
+      <strong>Recent baking activity</strong>
+      <span>{dateLabel(lastBake.date, { month: "long", day: "numeric", year: "numeric" })}: {lastBake.progress} step{lastBake.progress === 1 ? "" : "s"} completed.</span>
+      {lastBake.versionId === version.id ?
+        <span className="recipe-version-matched">This exact recipe version was used.</span> :
+        <Button tone="ghost" onClick={() => show(lastBake.versionId)}>View the exact version used</Button>}
+    </section>}
     <RecipePhotoSection recipeId={version.recipe_id} name={recipe.name} />
     {recipe.description && <p>{recipe.description}</p>}
     {recipe.source && <p className="muted">Source · {recipe.source}</p>}
