@@ -65,10 +65,20 @@ function ProductPhotos({ client, workspace, session, version, store }: {
   const [busy, setBusy] = useState(false);
   const [uploaded, setUploaded] = useState(0);
   const [fileKey, setFileKey] = useState(0);
-  const related = recordsOf(store.records, "photo").filter(({ document }) => document.sessionId === session.id && document.versionId === version.id);
+  const [preview, setPreview] = useState<string>();
+  const related = recordsOf(store.records, "photo").filter(({ document }) =>
+    document.sessionId === session.id && document.versionId === version.id);
   const check = session.document.shots[version.id] ?? {};
+  const selectedStatus = check[shot] ?? "Not started";
+  const approved = shots.filter((name) => check[name] === "Approved").length;
+  const selectedHero = session.document.heroPhotos?.[version.id] ?? related.find((item) => item.document.hero)?.id;
+  const changeShotStatus = (name: string, status: typeof shotStatuses[number]) => {
+    store.put("session", { ...session.document,
+      shots: { ...session.document.shots, [version.id]: { ...check, [name]: status } },
+    }, session.id);
+  };
   async function upload() {
-    if (!client || !files.length || busy) return;
+    if (!client || !files.length || busy || !store.online) return;
     setBusy(true);
     setUploaded(0);
     setError("");
@@ -77,9 +87,13 @@ function ProductPhotos({ client, workspace, session, version, store }: {
       files.forEach(validatePhoto);
       for (const file of files) {
         const id = crypto.randomUUID();
-        const path = await uploadPhoto(client, `${workspace}/${session.id}/${version.id}`, file, id);
-        store.put("photo", { sessionId: session.id, versionId: version.id, path, shot, captured: easternDate(), use, status: "Captured", hero: false }, id);
+        const path = await uploadPhoto(client, workspace + "/" + session.id + "/" + version.id, file, id);
+        store.put("photo", { sessionId: session.id, versionId: version.id, path, shot,
+          captured: easternDate(), use, status: "Captured", hero: false }, id);
         count += 1;
+      }
+      if (count && (check[shot] === undefined || check[shot] === "Not started")) {
+        changeShotStatus(shot, "Captured");
       }
     } catch (cause) { setError(message(cause)); }
     finally {
@@ -89,47 +103,94 @@ function ProductPhotos({ client, workspace, session, version, store }: {
       setBusy(false);
     }
   }
-  return <article className="panel stack">
-    <div className="line"><div className="stack compact"><p className="eyebrow">{session.document.title} · {session.document.date}</p><h2>{version.document.name}</h2></div>
-      <Status>{shots.every((name) => check[name] === "Approved") ? "Shots approved" : "Ready for photos"}</Status></div>
-    <h3>Shot list</h3>
-    <div className="shot-grid">{shots.map((name) => {
-      const count = related.filter((item) => item.document.shot === name).length;
-      return <div className="shot-tile" data-status={check[name] ?? "Not started"} key={name}><Field label={name}><select value={check[name] ?? "Not started"} onChange={(e) => {
-        store.put("session", { ...session.document, shots: { ...session.document.shots, [version.id]: { ...check, [name]: e.target.value as typeof shotStatuses[number] } } }, session.id);
-      }}>{shotStatuses.map((status) => <option key={status}>{status}</option>)}</select></Field>
-        <p className="muted" style={{ margin: "6px 0 0", fontSize: 15 }}>{count ? `${count} photo${count === 1 ? "" : "s"}` : "No photos yet"}</p></div>;
-    })}</div>
-    <details><summary>Framing and lighting</summary><div className="stack compact">
-      <p>Use soft side light and a simple surface. Capture the full bake first, then move closer for texture.</p>
-      <p>Leave room in the frame for the website crop. Use the broken-open or sliced shot to show the interior.</p>
-    </div></details>
-    {client && recordsOf(store.records, "reference").some(({ document }) => document.versionId === version.id) && <details>
-      <summary>Recipe photo references</summary>
-      <div className="tiles">{recordsOf(store.records, "reference").filter(({ document }) => document.versionId === version.id).map((item) =>
-        <div className="stack compact" key={item.id}><Photo client={client} path={item.document.path} alt={item.document.title} /><p>{item.document.notes}</p></div>)}</div>
-    </details>}
-    {client ? <form className="stack" onSubmit={(e) => { e.preventDefault(); void upload(); }}>
-      <div className="cols"><Field label="Shot type"><select value={shot} onChange={(e) => setShot(e.target.value)}>{shots.map((name) => <option key={name}>{name}</option>)}</select></Field>
-        <Field label="Intended use"><select value={use} onChange={(e) => setUse(e.target.value as typeof use)}>{uses.map((name) => <option key={name}>{name}</option>)}</select></Field></div>
-      <label className="file-pick"><input key={fileKey} type="file" accept={imageAccept} multiple aria-label="Choose photos" onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
-        <span className="hb-btn hb-btn--app hb-btn--secondary" aria-hidden="true"><Camera size={22} /> Add photos</span>
-        <span className="muted">{files.length ? `${files.length} selected` : "From the camera or photo library"}</span></label>
-      {error && <p className="notice error" role="alert">{error}</p>}
-      <div className="actions"><Button type="submit" disabled={!store.online || busy || !files.length}>{busy ? "Uploading…" : "Upload photos"}</Button>
-        {uploaded > 0 && <span role="status">{uploaded} uploaded</span>}{!store.online && <p className="muted">Reconnect to upload photos.</p>}</div>
-    </form> : <p className="muted">Connect Supabase Storage to upload photos.</p>}
-    {client && related.length > 0 && <div className="tiles">{related.map((entry) => <div className="row stack" key={entry.id}>
-      <Photo client={client} path={entry.document.path} alt={`${version.document.name}, ${entry.document.shot}`} />
-      <p>{entry.document.shot} · {entry.document.use} · {entry.document.captured}</p>
-      <Field label="Photo status"><select value={entry.document.status} onChange={(e) => store.put("photo", { ...entry.document, status: e.target.value as typeof shotStatuses[number] }, entry.id)}>
-        {shotStatuses.map((name) => <option key={name}>{name}</option>)}</select></Field>
-      <Button tone="secondary" disabled={(session.document.heroPhotos?.[version.id] ?? related.find((item) => item.document.hero)?.id) === entry.id} onClick={() =>
-        store.put("session", { ...session.document, heroPhotos: { ...session.document.heroPhotos, [version.id]: entry.id } }, session.id)}>
-        {(session.document.heroPhotos?.[version.id] ?? related.find((item) => item.document.hero)?.id) === entry.id ? "Hero image" : "Set as hero"}
-      </Button>
-    </div>)}</div>}
-    <Feedback key={version.id} session={session} version={version} store={store} />
+  return <article className="photos-workspace panel stack">
+    <header className="photos-workspace-heading">
+      <div className="stack compact">
+        <p className="eyebrow">{session.document.date} · {session.document.title}</p>
+        <h2>{version.document.name}</h2>
+        <p className="muted photos-workspace-progress">{approved} of {shots.length} shots approved · {related.length} saved photo{related.length === 1 ? "" : "s"}</p>
+      </div>
+      <Status>{approved === shots.length ? "Approved" : "Ready for photos"}</Status>
+    </header>
+    <section className="stack compact" aria-label="Photography shot list">
+      <div className="photos-section-heading"><h3>Shot list</h3><p className="muted">Select a shot to upload or update its status.</p></div>
+      <div className="photos-shot-list">{shots.map((name) => {
+        const count = related.filter((item) => item.document.shot === name).length;
+        const status = check[name] ?? "Not started";
+        return <button type="button" key={name} className="photos-shot-option" aria-pressed={shot === name}
+          onClick={() => { setShot(name); setUploaded(0); }} data-status={status}>
+          <span className="photos-shot-dot" aria-hidden="true" />
+          <span className="photos-shot-name">{name}</span>
+          <span className="photos-shot-meta">{count ? count + " photo" + (count === 1 ? "" : "s") : status}</span>
+        </button>;
+      })}</div>
+    </section>
+    <section className="photos-upload-panel stack compact" aria-label="Add baking photos">
+      <div className="photos-section-heading"><h3>Add photos</h3><p className="muted">Save photos to the selected shot.</p></div>
+      <form className="stack compact" onSubmit={(e) => { e.preventDefault(); void upload(); }}>
+        <div className="photos-upload-fields">
+          <Field label="Shot type"><select value={shot} onChange={(e) => setShot(e.target.value)}>
+            {shots.map((name) => <option key={name}>{name}</option>)}</select></Field>
+          <Field label={shot + " status"}><select value={selectedStatus} onChange={(e) =>
+            changeShotStatus(shot, e.target.value as typeof shotStatuses[number])}>
+            {shotStatuses.map((status) => <option key={status}>{status}</option>)}</select></Field>
+          <Field label="Intended use"><select value={use} onChange={(e) => setUse(e.target.value as typeof use)}>
+            {uses.map((name) => <option key={name}>{name}</option>)}</select></Field>
+        </div>
+        {client ? <div className="photos-upload-actions">
+          <label className="photos-file-picker"><input key={fileKey} type="file" accept={imageAccept} multiple aria-label="Choose photos"
+            onChange={(e) => { setFiles(Array.from(e.target.files ?? [])); setUploaded(0); }} />
+            <span className="hb-btn hb-btn--app hb-btn--secondary" aria-hidden="true"><Camera size={17} /> Choose photos</span></label>
+          <span className="photos-file-status muted">{files.length ? files.length + (files.length === 1 ? " photo selected" : " photos selected") : "Camera or photo library"}</span>
+          <Button type="submit" disabled={!store.online || busy || !files.length}>{busy ? "Uploading…" : "Upload" + (files.length ? " " + files.length : "")}</Button>
+          {uploaded > 0 && <span role="status">{uploaded} uploaded</span>}
+        </div> : <p className="muted">Connect Supabase Storage to upload photos.</p>}
+        {!store.online && <p className="muted">Reconnect to upload photos.</p>}
+        {error && <p className="notice error" role="alert">{error}</p>}
+      </form>
+    </section>
+    <section className="stack compact">
+      <div className="photos-section-heading"><h3>Saved photos</h3><span className="muted">{related.length} total</span></div>
+      {client && related.length ? <div className="photos-gallery">
+        {related.map((entry) => <article className="photos-gallery-card" key={entry.id}>
+          <button className="photos-gallery-preview" type="button" aria-label={"View " + entry.document.shot + " photo"}
+            onClick={() => setPreview(entry.document.path)}>
+            <Photo client={client} path={entry.document.path} alt={version.document.name + ", " + entry.document.shot} />
+            {selectedHero === entry.id && <span className="photos-gallery-hero">Main</span>}
+          </button>
+          <div className="photos-gallery-details">
+            <strong>{entry.document.shot}</strong><small className="muted">{entry.document.use}</small>
+            <Field label="Photo status"><select value={entry.document.status} onChange={(e) =>
+              store.put("photo", { ...entry.document, status: e.target.value as typeof shotStatuses[number] }, entry.id)}>
+              {shotStatuses.map((name) => <option key={name}>{name}</option>)}</select></Field>
+            <Button tone="ghost" disabled={selectedHero === entry.id} onClick={() =>
+              store.put("session", { ...session.document, heroPhotos: { ...session.document.heroPhotos, [version.id]: entry.id } }, session.id)}>
+              {selectedHero === entry.id ? "Main photo" : "Set as main"}</Button>
+          </div>
+        </article>)}
+      </div> : <p className="photos-empty muted">No photos saved for this batch.</p>}
+    </section>
+    <div className="photos-more">
+      <details><summary>Framing and lighting tips</summary>
+        <div className="stack compact"><p>Use soft side light and a simple background. Take one full-product shot before moving in for texture.</p>
+          <p>Leave space for a website crop and capture the inside of sliced or broken-open baked goods.</p></div>
+      </details>
+      {client && recordsOf(store.records, "reference").some(({ document }) => document.versionId === version.id) &&
+        <details><summary>Photo references</summary>
+          <div className="photos-gallery">{recordsOf(store.records, "reference").filter(({ document }) => document.versionId === version.id).map((item) =>
+            <article className="photos-gallery-card" key={item.id}>
+              <Photo client={client} path={item.document.path} alt={item.document.title} />
+              <strong>{item.document.title}</strong>{item.document.notes && <p>{item.document.notes}</p>}
+            </article>)}</div>
+        </details>}
+      <Feedback key={version.id} session={session} version={version} store={store} />
+    </div>
+    {client && preview && <div className="photo-viewer" role="dialog" aria-modal="true" aria-label="Photo preview"
+      onClick={() => setPreview(undefined)}>
+      <button type="button" className="photos-preview-close" onClick={() => setPreview(undefined)}>Close preview</button>
+      <div className="photos-preview-media" onClick={(e) => e.stopPropagation()}>
+        <Photo client={client} path={preview} alt="Selected baking photo" /></div>
+    </div>}
   </article>;
 }
 
@@ -173,14 +234,43 @@ function References({ store, client, workspace }: { store: WorkspaceStore; clien
   </div></details></section>;
 }
 
+// Historic "Launch check" records are internal QA sessions, not customer bakes.
+// Leave stored data untouched while excluding these tests from the photo queue.
+export function isLaunchCheckSession(title: string) {
+  return /^\s*launch check(?:\s|[—–:-]|$)/i.test(title);
+}
 export function Photos({ store, client, workspace }: { store: WorkspaceStore; client: SupabaseClient | null; workspace: string }) {
-  const queue = recordsOf(store.records, "session").flatMap((session) => session.document.recipes.flatMap((recipe) => {
-    const version = store.library.versions.find((item) => item.id === recipe.versionId);
-    return version?.document.steps.length && version.document.steps.every((step) => recipe.completed.includes(step.id)) ? [{ session, version }] : [];
-  }));
-  return <><Heading title="Photography" detail="Ready for photos" /><section className="stack">
-    {queue.length ? queue.map(({ session, version }) => <ProductPhotos key={`${session.id}:${version.id}`} {...{ store, client, workspace, session, version }} />) :
-      <div className="panel stack"><Camera /><h2>No batches ready</h2><p className="muted">Finishing a batch adds its shot checklist here.</p></div>}
+  const [selected, setSelected] = useState<string | null>(null);
+  const queue = recordsOf(store.records, "session")
+    .filter((session) => !isLaunchCheckSession(session.document.title))
+    .flatMap((session) => session.document.recipes.flatMap((recipe) => {
+      const version = store.library.versions.find((item) => item.id === recipe.versionId);
+      return version?.document.steps.length && version.document.steps.every((step) => recipe.completed.includes(step.id))
+        ? [{ session, version }] : [];
+    }))
+    .sort((a, b) => b.session.document.date.localeCompare(a.session.document.date));
+  const keyOf = ({ session, version }: (typeof queue)[number]) => session.id + ":" + version.id;
+  const active = queue.find((item) => keyOf(item) === selected) ?? queue[0];
+  return <div className="photos-page">
+    <Heading title="Photos" detail="Product photography"/>
+    <p className="muted photos-page-intro">Manage photos for finished baking batches, choose main images, and record feedback.</p>
+    {queue.length ? <div className="photos-layout">
+      <aside className="photos-batch-nav" aria-label="Baking batches ready for photos">
+        <div className="photos-batch-nav-heading"><h2>Ready for photos</h2><span className="muted">{queue.length}</span></div>
+        <div className="photos-batch-items">{queue.map((item) => {
+          const count = recordsOf(store.records, "photo").filter(({ document }) =>
+            document.sessionId === item.session.id && document.versionId === item.version.id).length;
+          return <button key={keyOf(item)} type="button" aria-pressed={Boolean(active && keyOf(active) === keyOf(item))}
+            className="photos-batch-option" onClick={() => setSelected(keyOf(item))}>
+            <strong>{item.version.document.name}</strong>
+            <small>{item.session.document.date} · {count} saved photo{count === 1 ? "" : "s"}</small>
+          </button>;
+        })}</div>
+      </aside>
+      <div className="photos-detail">{active && <ProductPhotos key={keyOf(active)} client={client} workspace={workspace}
+        session={active.session} version={active.version} store={store} />}</div>
+    </div> : <section className="panel photos-no-batches"><Camera size={24}/><h2>No batches ready for photos</h2>
+      <p className="muted">Completed baking steps appear here when a real batch is ready to photograph.</p></section>}
     {client && <References {...{ store, client, workspace }} />}
-  </section></>;
+  </div>;
 }
