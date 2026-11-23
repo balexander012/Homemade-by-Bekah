@@ -50,10 +50,13 @@ function pathFor(tab: Tab, detail?: Detail) {
     if (detail.versionId) p.set("versionId", detail.versionId);
     return "/bake/new?" + p;
   }
-  p.set("date", detail.date);
-  if (detail.id) p.set("id", detail.id);
-  if (detail.title) p.set("title", detail.title);
-  return "/planner/event?" + p;
+  if (detail.screen === "event") {
+    p.set("date", detail.date);
+    if (detail.id) p.set("id", detail.id);
+    if (detail.title) p.set("title", detail.title);
+    return "/planner/event?" + p;
+  }
+  return tabPaths[tab];
 }
 function locationState(): { tab: Tab; detail?: Detail } {
   const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
