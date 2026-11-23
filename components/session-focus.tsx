@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ChefHat, Clock3, ListChecks, Play, RotateCcw, Timer, Volume2 } from "lucide-react";
-import { currentSteps, formatAmount, nextStep, ovenBlocked, scale, sharedIngredients, timerTime, type Entry, type Session } from "@/lib/domain";
+import { currentSteps, formatAmount, modes, nextStep, ovenBlocked, scale, sharedIngredients, timerTime, type Entry, type Session } from "@/lib/domain";
 import type { WorkspaceStore } from "@/lib/use-workspace";
 import { Button, Field, Heading, message } from "./ui";
 import { RecipeImage } from "./recipe-photos";
+import { SideBySideSteps } from "./side-by-side";
 
 type View = "steps" | "prep" | "overview" | "finish";
 
@@ -61,6 +62,7 @@ export function FocusedBakingSession({ entry, store, now, photos, sound, audioRe
   const focusedStepKey = focused ? focused.version.id + ":" + focused.step.id : null;
   useEffect(() => {
     if (previousStepKey.current && focusedStepKey && previousStepKey.current !== focusedStepKey) {
+      if (stepCardRef.current) stepCardRef.current.scrollTop = 0;
       stepCardRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
     }
     previousStepKey.current = focusedStepKey;
@@ -175,6 +177,18 @@ export function FocusedBakingSession({ entry, store, now, photos, sound, audioRe
       </div>)}</div>}
     </section>}
     {view === "steps" && <>
+      {session.recipes.length > 1 && <div className="bake-layout-picker">
+        <Field label="Baking mode"><select value={session.mode} disabled={!active}
+          onChange={(event) => save({ mode: event.target.value as Session["mode"] })}>
+          {modes.map((mode) => <option key={mode} value={mode}>{mode}</option>)}
+        </select></Field>
+        <p>{session.mode === "Side-by-Side" ? "Both recipes are shown together, with independent steps and timers." :
+          "Switch to Side-by-Side to work on both recipes at once."}</p>
+      </div>}
+      {session.mode === "Side-by-Side" && session.recipes.length > 1
+        ? <SideBySideSteps session={session} versions={versions} now={now} active={active}
+            sound={sound} save={save}/>
+        : <>
       {recipeSteps.length > 1 && <div className="bake-recipe-switch" aria-label="Choose active recipe">
         {recipeSteps.map((item) => <button type="button" key={item.version.id}
           aria-pressed={focused?.version.id === item.version.id} onClick={() => setFocus(item.version.id)}>
@@ -231,6 +245,7 @@ export function FocusedBakingSession({ entry, store, now, photos, sound, audioRe
           <Button onClick={completeStep}>Complete step <Check size={18}/></Button>
         </div>
       </div>}
+        </>}
     </>}
     {view === "prep" && <div className="bake-prep-grid">
       <section className="panel stack compact"><h2>Gather ingredients</h2><p className="muted">Check off each ingredient as it is ready.</p>
