@@ -96,8 +96,9 @@ function ReviewCard({ entry, previous, stale, busy, decide, show }: {
   </article>;
 }
 
-export function RecipeReview({ store, show, onRejected }: {
+export function RecipeReview({ store, show, onRejected, onPending }: {
   store: WorkspaceStore; show: (id: string) => void; onRejected: (ids: string[]) => void;
+  onPending?: (entries: Receipt[]) => void;
 }) {
   const { loadRecipeImports, reviewRecipeImport } = store;
   const [entries, setEntries] = useState<Receipt[]>([]);
@@ -110,12 +111,13 @@ export function RecipeReview({ store, show, onRejected }: {
       if (!current) return;
       setEntries(rows);
       onRejected(rows.filter((row) => row.status === "rejected").flatMap((row) => row.version_id ? [row.version_id] : []));
+      onPending?.(rows.filter((row) => row.status === "ready_for_review" || row.status === "incomplete"));
       setError("");
     }).catch((cause) => { if (current) setError(message(cause)); });
     refresh();
     const timer = setInterval(() => { if (document.visibilityState === "visible" && navigator.onLine) refresh(); }, 12000);
     return () => { current = false; clearInterval(timer); };
-  }, [loadRecipeImports, onRejected]);
+  }, [loadRecipeImports, onRejected, onPending]);
 
   const queue = entries.filter((entry) => entry.status === "ready_for_review" || entry.status === "incomplete");
   const visible = expanded ? entries : queue;
@@ -127,6 +129,7 @@ export function RecipeReview({ store, show, onRejected }: {
       const next = await loadRecipeImports();
       setEntries(next);
       onRejected(next.filter((row) => row.status === "rejected").flatMap((row) => row.version_id ? [row.version_id] : []));
+      onPending?.(next.filter((row) => row.status === "ready_for_review" || row.status === "incomplete"));
       if (version) await store.sync();
     } catch (cause) {
       setError(message(cause));
@@ -134,15 +137,23 @@ export function RecipeReview({ store, show, onRejected }: {
     } finally { setBusy(undefined); }
   }
 
-  if (!visible.length && entries.length <= queue.length && !error) return null;
-  return <section className="panel" aria-label="Recipes to review"><details className="stack" open={Boolean(error)}>
-    <summary><h2>Recipes to review{visible.length ? ` · ${visible.length}` : ""}</h2></summary>
-    {entries.length > queue.length && <div className="line"><Button tone="ghost" onClick={() => setExpanded(!expanded)}>{expanded ? "Show pending" : "Show import history"}</Button></div>}
-    {error && <p className="notice error" role="alert">{error}</p>}
-    {!visible.length && <p className="muted">No recipe drafts from ChatGPT are waiting.</p>}
-    {visible.map((entry) => <ReviewCard key={entry.id} entry={entry} busy={Boolean(busy)} show={show}
-      previous={store.library.versions.find((version) => version.id === entry.previous_version_id)}
-      stale={(entry.recipe_id ? store.library.approvals[entry.recipe_id] ?? null : null) !== entry.baseline_approval_id}
-      decide={(decision) => decide(entry, decision)} />)}
-  </details></section>;
+  if (!entries.length && !error) return null;
+  return <section className="recipe-review-shell" aria-label="Recipes to review">
+    <details className="recipe-review-disclosure" open={error ? true : undefined}>
+      <summary className="recipe-review-summary">
+        <span className="recipe-review-label"><strong>{queue.length ? "Recipes needing attention" : "Recipe import history"}</strong>
+          <small>{queue.length ? "Check corrections before using these versions" : "Previously submitted recipes"}</small></span>
+        {queue.length > 0 && <span className="recipe-review-count">{queue.length} to review</span>}
+      </summary>
+      <div className="recipe-review-content stack compact">
+        {entries.length > queue.length && <Button tone="ghost" onClick={() => setExpanded(!expanded)}>{expanded ? "Show pending only" : "Show import history"}</Button>}
+        {error && <p className="notice error" role="alert">{error}</p>}
+        {!visible.length && <p className="muted">No recipe corrections are waiting.</p>}
+        {visible.map((entry) => <ReviewCard key={entry.id} entry={entry} busy={Boolean(busy)} show={show}
+          previous={store.library.versions.find((version) => version.id === entry.previous_version_id)}
+          stale={(entry.recipe_id ? store.library.approvals[entry.recipe_id] ?? null : null) !== entry.baseline_approval_id}
+          decide={(decision) => decide(entry, decision)} />)}
+      </div>
+    </details>
+  </section>;
 }
