@@ -327,10 +327,11 @@ test("Recipes library searches ingredients and uses compact grid and list layout
   await createRecipe(page, "Cinnamon espresso cookies");
   await navigation(page, "Recipes").click();
   const results = page.locator(".recipe-library-results");
-  await expect(results.locator(".recipe-card")).toHaveCount(1);
+  await expect(results.locator(".recipe-card").filter({ hasText: "Cinnamon espresso cookies" })).toHaveCount(1);
   await page.getByRole("searchbox", { name: "Search recipes" }).fill("Unsalted butter");
+  await expect(results.locator(".recipe-card").filter({ hasText: "Cinnamon espresso cookies" })).toHaveCount(1);
+  await page.getByRole("searchbox", { name: "Search recipes" }).fill("Cinnamon espresso cookies");
   await expect(results.locator(".recipe-card")).toHaveCount(1);
-  await expect(results).toContainText("Cinnamon espresso cookies");
   await page.getByRole("button", { name: "List view" }).click();
   await expect(results).toHaveClass(/is-list/);
   await page.getByRole("button", { name: "Grid view" }).click();
@@ -338,7 +339,7 @@ test("Recipes library searches ingredients and uses compact grid and list layout
   await page.getByRole("searchbox", { name: "Search recipes" }).fill("no match");
   await expect(page.getByRole("heading", { name: "No matching recipes" })).toBeVisible();
   await page.getByRole("button", { name: "Clear filters" }).click();
-  await expect(results.locator(".recipe-card")).toHaveCount(1);
+  await expect(results.locator(".recipe-card").filter({ hasText: "Cinnamon espresso cookies" })).toHaveCount(1);
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
