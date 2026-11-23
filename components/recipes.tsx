@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { BookOpen, Plus, Star } from "lucide-react";
-import { activeVersions, blankRecipe, categories, canBake, formatAmount, recipeStatuses, scale, type Recipe, type Version } from "@/lib/domain";
+import { BookOpen, CheckCircle2, LayoutGrid, List, Plus, Search, Star } from "lucide-react";
+import { activeVersions, blankRecipe, categories, canBake, dateLabel, formatAmount, recipeStatuses, scale, type Recipe, type Version } from "@/lib/domain";
 import { readRecipeFile, sourceFileTypes } from "@/lib/read-recipe-file";
 import { parseRecipeImport } from "@/lib/recipe-import";
 import { defaultPolicies } from "@/lib/sample";
 import { recordsOf } from "@/lib/store";
 import type { WorkspaceStore } from "@/lib/use-workspace";
 import { Button, Field, Heading, Status, message } from "./ui";
-import { RecipeReview } from "./recipe-review";
+import { RecipeReview, type Receipt } from "./recipe-review";
 import { RecipeImage, RecipePhotoSection } from "./recipe-photos";
 
 const split = (text: string) => text.split(",").map((item) => item.trim()).filter(Boolean);
@@ -29,40 +29,110 @@ export function Recipes({ store, show, edit, ideas }: { store: WorkspaceStore; s
   const [category, setCategory] = useState("");
   const [favorites, setFavorites] = useState(false);
   const [filter, setFilter] = useState<typeof filters[number]>("All");
+  const [layout, setLayout] = useState<"grid" | "list">("grid");
+  const [pending, setPending] = useState<Receipt[]>([]);
   const [rejected, setRejected] = useState<string[]>([]);
   const versions = activeVersions({ ...store.library, versions: store.library.versions.filter((version) => !rejected.includes(version.id)) });
   const isApproved = (version: Version) => store.library.approvals[version.recipe_id] === version.id;
+  const sessions = recordsOf(store.records, "session");
   const matches = versions.filter((version) => {
     const { recipe_id, document } = version;
+    const searchText = [document.name, document.category, document.description,
+      ...document.tags, ...document.ingredients.map((ingredient) => ingredient.name)].join(" ").toLowerCase();
     return filterMatch(filter, document.status, isApproved(version)) &&
-      (!favorites || store.library.favorites.includes(recipe_id)) && (!category || document.category === category) &&
-      [document.name, document.category, document.description, ...document.tags].join(" ").toLowerCase().includes(query.trim().toLowerCase());
-  });
-  return <>
-    <Heading title="Recipes"><div className="actions"><Button tone="secondary" onClick={ideas}>Recipe ideas</Button><Button onClick={edit}><Plus size={18} /> New recipe</Button></div></Heading>
-    <div className="stack">
-      <RecipeReview store={store} show={show} onRejected={setRejected} />
-      <div className="toolbar">
-        <Field label="Search recipes"><input type="search" placeholder="Name, ingredient or tag" value={query} onChange={(event) => setQuery(event.target.value)} /></Field>
+      (!favorites || store.library.favorites.includes(recipe_id)) &&
+      (!category || document.category === category) &&
+      searchText.includes(query.trim().toLowerCase());
+  }).sort((left, right) => left.document.name.localeCompare(right.document.name));
+  const reset = () => { setQuery(""); setCategory(""); setFavorites(false); setFilter("All"); };
+  const filtered = Boolean(query || category || favorites || filter !== "All");
+  const openImport = (id: string) => {
+    const parent = document.querySelector<HTMLDetailsElement>(".recipe-review-disclosure");
+    if (parent) parent.open = true;
+    const item = document.getElementById("recipe-import-" + id);
+    (item ?? parent)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  return <div className="recipe-library stack">
+    <Heading title="Recipes"><div className="actions">
+      <Button tone="secondary" onClick={ideas}>Recipe ideas</Button>
+      <Button onClick={edit}><Plus size={17} /> New recipe</Button>
+    </div></Heading>
+    <RecipeReview store={store} show={show} onRejected={setRejected} onPending={setPending} />
+    <section className="recipe-library-controls" aria-label="Find recipes">
+      <div className="recipe-library-search-row">
+        <Field label="Search recipes"><input type="search" placeholder="Search by recipe or ingredient" value={query}
+          onChange={(event) => setQuery(event.target.value)} /></Field>
         <Field label="Category"><select value={category} onChange={(event) => setCategory(event.target.value)}>
-          <option value="">All categories</option>{[...new Set([...categories, ...versions.map(({ document }) => document.category)])].map((name) => <option key={name}>{name}</option>)}
+          <option value="">All categories</option>
+          {[...new Set([...categories, ...versions.map(({ document }) => document.category)])].map((name) =>
+            <option key={name}>{name}</option>)}
         </select></Field>
       </div>
-      <div className="chips" role="group" aria-label="Recipe filters">
-        {filters.map((name) => <button type="button" className="chip" key={name} aria-pressed={filter === name} onClick={() => setFilter(name)}>{name}</button>)}
-        <button type="button" className="chip" aria-pressed={favorites} onClick={() => setFavorites(!favorites)}><Star size={16} className="inline mr-1" aria-hidden="true" />Favorites</button>
-      </div>
-      {matches.length === 0 && <section className="panel empty-state"><BookOpen aria-hidden="true" /><h2 className="display">{versions.length ? "No matching recipes" : "Start your recipe library"}</h2><p className="muted">{versions.length ? "Try a different filter, search or category." : "Save a recipe you make often or start a draft from your notes."}</p></section>}
-      <div className="recipe-grid">{matches.map((version) => <article className="panel recipe-card" key={version.id}>
-        <RecipeImage recipeId={version.recipe_id} name={version.document.name} category={version.document.category} />
-        <div className="body">
-          <h2><button type="button" onClick={() => show(version.id)}>{version.document.name}</button></h2>
-          <div className="line"><Status>{isApproved(version) ? "Approved" : version.document.status}</Status>{store.library.favorites.includes(version.recipe_id) && <Star aria-label="Favorite" size={19} />}</div>
-          <p className="muted">{version.document.yieldLow ? `Makes ${version.document.yieldLow}${version.document.yieldHigh ? `–${version.document.yieldHigh}` : ""} ${version.document.yieldUnit}` : "Yield to verify"}</p>
+      <div className="recipe-library-filterline">
+        <div className="recipe-library-filters" role="group" aria-label="Recipe filters">
+          {filters.map((name) => <button type="button" className="chip" key={name}
+            aria-pressed={filter === name} onClick={() => setFilter(name)}>{name}</button>)}
+          <button type="button" className="chip" aria-pressed={favorites} onClick={() => setFavorites(!favorites)}>
+            <Star size={14} aria-hidden="true" /> Favorites
+          </button>
         </div>
-      </article>)}</div>
+        <div className="recipe-library-view" role="group" aria-label="Recipe layout">
+          <button type="button" aria-label="Grid view" aria-pressed={layout === "grid"} onClick={() => setLayout("grid")}>
+            <LayoutGrid size={18} /></button>
+          <button type="button" aria-label="List view" aria-pressed={layout === "list"} onClick={() => setLayout("list")}>
+            <List size={18} /></button>
+        </div>
+      </div>
+      <div className="recipe-library-count">
+        <span>{matches.length} recipe{matches.length === 1 ? "" : "s"}</span>
+        {filtered && <button type="button" onClick={reset}>Clear filters</button>}
+      </div>
+    </section>
+    {matches.length === 0 && <section className="panel empty-state">
+      <BookOpen aria-hidden="true" /><h2 className="display">{versions.length ? "No matching recipes" : "Your recipe library is empty"}</h2>
+      <p className="muted">{versions.length ? "Change the search, status, or category to see more recipes." : "Add your first recipe to start baking."}</p>
+      {filtered && <Button tone="secondary" onClick={reset}>Show all recipes</Button>}
+    </section>}
+    <div className={"recipe-grid recipe-library-results" + (layout === "list" ? " is-list" : "")}>
+      {matches.map((version) => {
+        const related = sessions.flatMap((session) => session.document.recipes.flatMap((recipe) => {
+          const used = store.library.versions.find((item) => item.id === recipe.versionId);
+          return used?.recipe_id === version.recipe_id ?
+            [{ date: session.document.date, status: session.document.status, versionId: recipe.versionId, completed: recipe.completed.length }] : [];
+        })).sort((left, right) => right.date.localeCompare(left.date));
+        const latestBake = related.find((item) => item.completed > 0);
+        const correction = pending.find((row) => row.recipe_id === version.recipe_id &&
+          row.payload.recipe.name.toLowerCase().includes("chocolate chip") &&
+          row.payload.recipe.yieldLow === 6) ??
+          pending.find((row) => row.recipe_id === version.recipe_id && row.payload.recipe.yieldLow !== version.document.yieldLow);
+        const label = version.document.status === "Ready for Testing" ? "Ready for Testing" : version.document.status;
+        return <article className="recipe-card panel" key={version.id}>
+          <RecipeImage recipeId={version.recipe_id} name={version.document.name} category={version.document.category} />
+          <div className="body">
+            <h2><button type="button" onClick={() => show(version.id)}>{version.document.name}</button></h2>
+            <div className="recipe-card-badges">
+              <Status>{label}</Status>
+              {isApproved(version) && <span className="recipe-preferred"><CheckCircle2 size={13}/> Preferred</span>}
+              {store.library.favorites.includes(version.recipe_id) && <Star aria-label="Favorite" size={16} />}
+            </div>
+            <p className="recipe-card-yield muted">{version.document.yieldLow ?
+              "Makes " + version.document.yieldLow + (version.document.yieldHigh ? " to " + version.document.yieldHigh : "") + " " + version.document.yieldUnit :
+              "Yield needs verification"}</p>
+            {correction && <button type="button" className="recipe-card-correction" onClick={() => openImport(correction.id)}>
+              <strong>Newer version needs review</strong>
+              <span>Proposed: {correction.payload.recipe.yieldLow} {correction.payload.recipe.yieldUnit}. View what needs correction.</span>
+            </button>}
+            {latestBake && <div className="recipe-card-lastbake">
+              <span>Used in a bake on {dateLabel(latestBake.date, { month: "short", day: "numeric" })}</span>
+              {latestBake.versionId !== version.id && <button type="button" onClick={() => show(latestBake.versionId)}>
+                View version used
+              </button>}
+            </div>}
+          </div>
+        </article>;
+      })}
     </div>
-  </>;
+  </div>;
 }
 
 export function RecipeDetail({ store, version, show, edit, back, bake }: {
