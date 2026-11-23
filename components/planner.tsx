@@ -243,7 +243,7 @@ export function Today({ today, now, store, edit, start, resume, showCalendar, sh
   const dismissed = tasks.filter((task) => task.document.status === "Dismissed" && task.document.date >= today);
   const sections = ["Preparation", "Baking", "Photography", "Wrap Up"] as const;
   const hasPrep = bakes.ingredients.length > 0 || bakes.equipment.length > 0;
-  const quiet = active.length === 0 && scheduled.length === 0 && pending.length === 0;
+  const quiet = active.length === 0 && scheduled.length === 0 && marked.length === 0 && !adding;
   const addTask = adding && <form className="today-new-task" onSubmit={(e) => {
     e.preventDefault(); store.put("task", { title, date: today, section, status: "Open" }); setTitle(""); setAdding(false);
   }}>
