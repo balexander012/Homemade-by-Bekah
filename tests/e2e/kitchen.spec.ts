@@ -275,3 +275,47 @@ test("photo workspace shows one batch at a time and avoids oversized panels", as
   await expect(page.locator(".photos-shot-option").filter({ hasText: "Broken-open texture" })).toHaveAttribute("data-status", "Captured");
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+
+test("Today keeps a scheduled bake compact and resumes an existing session instead of starting another", async ({ page }) => {
+  await page.goto("/");
+  await createRecipe(page, "Home dashboard biscuits");
+  await navigation(page, "Home").click();
+  await page.getByRole("button", { name: "Add event", exact: true }).click();
+  await page.getByLabel("Event title").fill("Saturday biscuits");
+  await page.getByRole("checkbox", { name: "Home dashboard biscuits", exact: true }).check();
+  await page.getByRole("button", { name: "Save event" }).click();
+  await navigation(page, "Home").click();
+  const scheduled = page.locator(".today-event-card").filter({ hasText: "Saturday biscuits" });
+  await expect(scheduled).toBeVisible();
+  await expect(page.locator(".next-action")).toHaveCount(0);
+  await expect(scheduled.getByRole("heading", { name: "Saturday biscuits", exact: true })).toBeVisible();
+  await expect(scheduled.locator("details.today-event-recipes")).not.toHaveAttribute("open");
+  await scheduled.getByRole("button", { name: "Start baking" }).click();
+  await page.getByRole("button", { name: "Begin session" }).click();
+  await navigation(page, "Home").click();
+  await expect(page.locator(".today-live-card")).toHaveCount(1);
+  await expect(page.locator(".today-live-card")).toContainText("Saturday biscuits");
+  await expect(page.locator(".today-progress-track")).toHaveAttribute("role", "progressbar");
+  await expect(scheduled.getByRole("button", { name: "Start baking" })).toHaveCount(0);
+  await expect(scheduled.getByRole("button", { name: "Resume session" })).toBeVisible();
+  await page.locator(".today-live-card").getByRole("button", { name: "Resume baking" }).click();
+  await expect(page.getByRole("heading", { name: "Baking session", exact: true })).toBeVisible();
+});
+
+test("Today shows real tasks, moves checked items to completed, and allows editing", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Today’s Plan" })).toBeVisible();
+  await page.locator(".today-page-actions").getByRole("button", { name: "Add task" }).click();
+  await page.getByLabel("Task title").fill("Prepare vanilla for cookie dough");
+  await page.getByRole("button", { name: "Save task" }).click();
+  await expect(page.locator(".today-task-group")).toContainText("Prepare vanilla for cookie dough");
+  const checkbox = page.getByRole("checkbox", { name: "Prepare vanilla for cookie dough" });
+  await checkbox.check();
+  await expect(page.getByText("Completed tasks · 1")).toBeVisible();
+  await page.getByText("Completed tasks · 1").click();
+  await expect(page.getByRole("checkbox", { name: "Prepare vanilla for cookie dough" })).toBeChecked();
+  await page.getByRole("checkbox", { name: "Prepare vanilla for cookie dough" }).uncheck();
+  await expect(page.locator(".today-task-group")).toContainText("Prepare vanilla for cookie dough");
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
