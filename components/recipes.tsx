@@ -24,7 +24,7 @@ function filterMatch(filter: typeof filters[number], status: string, approved: b
   return status === "Archived";
 }
 
-export function Recipes({ store, show, edit }: { store: WorkspaceStore; show: (id: string) => void; edit: () => void }) {
+export function Recipes({ store, show, edit, ideas }: { store: WorkspaceStore; show: (id: string) => void; edit: () => void; ideas: () => void }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [favorites, setFavorites] = useState(false);
@@ -39,7 +39,7 @@ export function Recipes({ store, show, edit }: { store: WorkspaceStore; show: (i
       [document.name, document.category, document.description, ...document.tags].join(" ").toLowerCase().includes(query.trim().toLowerCase());
   });
   return <>
-    <Heading title="Recipes"><Button onClick={edit}><Plus size={20} /> New recipe</Button></Heading>
+    <Heading title="Recipes"><div className="actions"><Button tone="secondary" onClick={ideas}>Recipe ideas</Button><Button onClick={edit}><Plus size={18} /> New recipe</Button></div></Heading>
     <div className="stack">
       <RecipeReview store={store} show={show} onRejected={setRejected} />
       <div className="toolbar">
