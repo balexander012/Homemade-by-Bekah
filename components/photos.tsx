@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Camera } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { activeVersions, easternDate, shotStatuses, shotsFor, type Doc, type Entry, type Version } from "@/lib/domain";
+import { activeVersions, easternDate, isLaunchCheckSession, shotStatuses, shotsFor, type Doc, type Entry, type Version } from "@/lib/domain";
 import { imageAccept, uploadPhoto, validatePhoto } from "@/lib/images";
 import { recordsOf } from "@/lib/store";
 import type { WorkspaceStore } from "@/lib/use-workspace";
@@ -234,11 +234,6 @@ function References({ store, client, workspace }: { store: WorkspaceStore; clien
   </div></details></section>;
 }
 
-// Historic "Launch check" records are internal QA sessions, not customer bakes.
-// Leave stored data untouched while excluding these tests from the photo queue.
-export function isLaunchCheckSession(title: string) {
-  return /^\s*launch check(?:\s|[—–:-]|$)/i.test(title);
-}
 export function Photos({ store, client, workspace }: { store: WorkspaceStore; client: SupabaseClient | null; workspace: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const queue = recordsOf(store.records, "session")
