@@ -65,7 +65,7 @@ test("plans and reschedules batches, then resumes state and timers after an offl
   await expect(page.locator(".photos-workspace")).toHaveCount(1);
   await expect(page.locator(".photos-shot-option")).toHaveCount(6);
   await page.getByRole("combobox", { name: "Hero shot status", exact: true }).selectOption("Captured");
-  await page.getByText("Baking feedback").click();
+  await page.getByText("Baking feedback", { exact: true }).click();
   await page.getByLabel("Actual yield").fill("5");
   await page.getByRole("button", { name: "Save feedback" }).click();
   await expect(page.getByText("Feedback saved", { exact: true })).toBeVisible();
