@@ -320,3 +320,44 @@ test("Today shows real tasks, moves checked items to completed, and allows editi
   await expect(page.locator(".today-task-group")).toContainText("Prepare vanilla for cookie dough");
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+
+test("Recipes library searches ingredients and uses compact grid and list layouts", async ({ page }) => {
+  await page.goto("/");
+  await createRecipe(page, "Cinnamon espresso cookies");
+  await navigation(page, "Recipes").click();
+  const results = page.locator(".recipe-library-results");
+  await expect(results.locator(".recipe-card").filter({ hasText: "Cinnamon espresso cookies" })).toHaveCount(1);
+  await page.getByRole("searchbox", { name: "Search recipes" }).fill("Unsalted butter");
+  await expect(results.locator(".recipe-card").filter({ hasText: "Cinnamon espresso cookies" })).toHaveCount(1);
+  await page.getByRole("searchbox", { name: "Search recipes" }).fill("Cinnamon espresso cookies");
+  await expect(results.locator(".recipe-card")).toHaveCount(1);
+  await page.getByRole("button", { name: "List view" }).click();
+  await expect(results).toHaveClass(/is-list/);
+  await page.getByRole("button", { name: "Grid view" }).click();
+  await expect(results).not.toHaveClass(/is-list/);
+  await page.getByRole("searchbox", { name: "Search recipes" }).fill("no match");
+  await expect(page.getByRole("heading", { name: "No matching recipes" })).toBeVisible();
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(results.locator(".recipe-card").filter({ hasText: "Cinnamon espresso cookies" })).toHaveCount(1);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("recipe detail shows the exact version used in a recorded baking session", async ({ page }) => {
+  await page.goto("/");
+  await createRecipe(page, "Jumbo cookie batch record");
+  await page.getByRole("button", { name: "Start baking" }).click();
+  await page.getByRole("button", { name: "Begin session" }).click();
+  await page.getByRole("button", { name: "Complete step" }).click();
+  await navigation(page, "Recipes").click();
+  await expect(page.locator(".recipe-card").filter({ hasText: "Jumbo cookie batch record" })).toContainText("Used in a bake on");
+  await page.getByRole("button", { name: "Jumbo cookie batch record" }).click();
+  await expect(page.getByRole("region", { name: "Recent baking activity" })).toContainText("This exact recipe version was used.");
+});
+
+test("draft recipe status does not falsely claim that the formula was tested", async ({ page }) => {
+  await page.goto("/");
+  await createRecipe(page, "Working cookie formula", "Draft");
+  await expect(page.getByText("This is a working draft, not a published baking formula.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start baking" })).toBeDisabled();
+});
