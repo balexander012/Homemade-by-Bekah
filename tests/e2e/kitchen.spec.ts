@@ -426,6 +426,7 @@ test("single recipe step cards keep the same height after advancing", async ({ p
   await page.getByLabel("Instruction", { exact: true }).last().fill(
     "Mix the ingredient thoroughly until light and fluffy, checking the texture and scraping down the bowl. " +
     "Repeat the mixing action carefully before setting the dough aside.");
+  await page.getByRole("combobox", { name: "Status", exact: true }).selectOption("Ready for Testing");
   await page.getByRole("button", { name: "Save recipe" }).click();
   await page.getByRole("button", { name: "Start baking" }).first().click();
   await page.getByRole("button", { name: "Begin session" }).click();
