@@ -59,7 +59,7 @@ function ReviewCard({ entry, previous, stale, busy, decide, show }: {
   const recipe = entry.payload.recipe;
   const changed = previous ? changes(previous.document, recipe) : [];
   const pending = entry.status === "ready_for_review" || entry.status === "incomplete";
-  return <article className="panel stack compact">
+  return <article id={"recipe-import-" + entry.id} className="panel stack compact recipe-review-card">
     <div className="line"><h3>{recipe.name}</h3><Status>{{
       ready_for_review: "Ready for review", incomplete: "Needs details", approved: "Approved", rejected: "Rejected",
       published: "Added to the app", already_published: "Already in the app",
