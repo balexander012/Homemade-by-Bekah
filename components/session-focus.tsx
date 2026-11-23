@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChefHat, Clock3, ListChecks, PauseCircle, Play, RotateCcw, Timer, Volume2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChefHat, Clock3, ListChecks, Play, RotateCcw, Timer, Volume2 } from "lucide-react";
 import { currentSteps, formatAmount, nextStep, ovenBlocked, scale, sharedIngredients, timerTime, type Entry, type Session } from "@/lib/domain";
 import type { WorkspaceStore } from "@/lib/use-workspace";
 import { Button, Field, Heading, message } from "./ui";
@@ -48,6 +48,9 @@ export function FocusedBakingSession({ entry, store, now, photos, sound, audioRe
   const [view, setView] = useState<View>("steps");
   const [showTimers, setShowTimers] = useState(false);
   const [timerMinutes, setTimerMinutes] = useState("");
+  const [timerSetupOpen, setTimerSetupOpen] = useState(false);
+  const stepCardRef = useRef<HTMLElement>(null);
+  const previousStepKey = useRef<string | null>(null);
   const [error, setError] = useState("");
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
@@ -55,6 +58,13 @@ export function FocusedBakingSession({ entry, store, now, photos, sound, audioRe
   const recipeSteps = currentSteps(session, versions, now);
   const suggested = nextStep(session, versions, now);
   const focused = recipeSteps.find((item) => item.version.id === session.focusVersionId) ?? suggested ?? recipeSteps[0];
+  const focusedStepKey = focused ? focused.version.id + ":" + focused.step.id : null;
+  useEffect(() => {
+    if (previousStepKey.current && focusedStepKey && previousStepKey.current !== focusedStepKey) {
+      stepCardRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    }
+    previousStepKey.current = focusedStepKey;
+  }, [focusedStepKey]);
   const total = session.recipes.reduce((count, item) => count + (versions.find((v) => v.id === item.versionId)?.document.steps.length ?? 0), 0);
   const completed = session.recipes.reduce((count, item) => count + item.completed.length, 0);
   const allDone = total > 0 && completed >= total;
@@ -69,6 +79,7 @@ export function FocusedBakingSession({ entry, store, now, photos, sound, audioRe
   const setFocus = (id: string) => {
     save({ focusVersionId: id });
     setTimerMinutes("");
+    setTimerSetupOpen(false);
     setView("steps");
   };
   const completeStep = () => {
@@ -81,6 +92,7 @@ export function FocusedBakingSession({ entry, store, now, photos, sound, audioRe
       focusVersionId: undefined,
     });
     setTimerMinutes("");
+    setTimerSetupOpen(false);
   };
   const undo = (versionId: string) => save({
     recipes: session.recipes.map((item) => item.versionId === versionId && item.completed.length ?
@@ -102,6 +114,8 @@ export function FocusedBakingSession({ entry, store, now, photos, sound, audioRe
         (focused.version.document.steps.indexOf(focused.step) + 1), start,
       deadline: start + Math.round(minutes * 60000), cancelled: false }] });
     setShowTimers(true);
+    setTimerSetupOpen(false);
+    setTimerMinutes("");
   };
   const updateTimer = (id: string, action: "add" | "cancel") => save({ timers: session.timers.map((timer) =>
     timer.id === id ? action === "cancel" ? { ...timer, cancelled: true } : { ...timer, deadline: timer.deadline + 60000 } : timer) });
@@ -128,14 +142,16 @@ export function FocusedBakingSession({ entry, store, now, photos, sound, audioRe
   }, [active]);
 
   return <div className="bake-focus stack">
-    <header className="bake-topline">
-      <button className="bake-back" type="button" onClick={exit} aria-label="Leave baking session"><ArrowLeft size={20}/><span>All sessions</span></button>
-      <span className="bake-state">{active ? "In progress" : "Completed"}</span>
+    <header className="bake-compact-header">
+      <div className="bake-header-content">
+        <button className="bake-back" type="button" onClick={exit} aria-label="Leave baking session"><ArrowLeft size={18}/><span>All sessions</span></button>
+        <div className="bake-session-heading">
+          <div className="bake-session-heading-line"><h1>Baking session</h1><span className="bake-state">{active ? "In progress" : "Completed"}</span></div>
+          <p className="bake-session-summary" title={session.title}>{session.title}</p>
+          <p className="bake-session-date">{session.date} · {session.recipes.length} recipes</p>
+        </div>
+      </div>
     </header>
-    <div className="bake-title-row">
-      <div><p className="eyebrow">{session.date} · {session.recipes.length} recipes</p><h1>{session.title}</h1></div>
-      {active && <Button tone="ghost" onClick={exit}><PauseCircle size={19}/> Leave and resume later</Button>}
-    </div>
     <div className="bake-progress-head"><strong>{completed} of {total} steps complete</strong><span>{total ? Math.round(completed / total * 100) : 0}%</span></div>
     <div className="bake-progress-track" role="progressbar" aria-label="Baking progress" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={total || 1}>
       <span style={{ width: (total ? completed / total * 100 : 0) + "%" }}/></div>
@@ -164,10 +180,12 @@ export function FocusedBakingSession({ entry, store, now, photos, sound, audioRe
           aria-pressed={focused?.version.id === item.version.id} onClick={() => setFocus(item.version.id)}>
           {item.version.document.name}<span>{item.progress.completed.length}/{item.version.document.steps.length}</span></button>)}
       </div>}
-      {focused ? <article className="bake-current-step">
-        <div className="bake-step-meta"><span className="eyebrow">{focused.version.document.name}</span>
-          <span className="bake-kind">{focused.step.kind}</span></div>
-        <p className="bake-step-count">Step {focused.version.document.steps.indexOf(focused.step) + 1} of {focused.version.document.steps.length}</p>
+      {focused ? <article className="bake-current-step" ref={stepCardRef}>
+        <div className="bake-step-meta">
+          <span className="bake-recipe-name">{focused.version.document.name}</span>
+          <span className="bake-step-count">Step {focused.version.document.steps.indexOf(focused.step) + 1} of {focused.version.document.steps.length}</span>
+          <span className="bake-kind">{focused.step.kind}</span>
+        </div>
         <h2 className="bake-instruction">{focused.step.instruction}</h2>
         {(focused.step.temperature || focused.step.minutes) && <p className="bake-step-specs">
           {focused.step.temperature ? focused.step.temperature + " °F" : ""}
@@ -187,9 +205,6 @@ export function FocusedBakingSession({ entry, store, now, photos, sound, audioRe
             </div>;
           })}</div>}
         {active && <div className="bake-step-tools">
-          <div className="bake-timer-form"><Field label="Timer (minutes)"><input type="number" min="0.01" max="10080" step="any" inputMode="decimal"
-            placeholder={focused.step.minutes ? String(focused.step.minutes) : "Minutes"} value={timerMinutes} onChange={(event) => setTimerMinutes(event.target.value)}/></Field>
-            <Button tone="secondary" onClick={startTimer}><Timer size={18} aria-hidden="true"/> Start timer</Button></div>
           <Button tone="ghost" onClick={() => {
             if (!("speechSynthesis" in window)) return;
             window.speechSynthesis.cancel();
@@ -200,9 +215,21 @@ export function FocusedBakingSession({ entry, store, now, photos, sound, audioRe
         </div>}
       </article> : <section className="panel empty-state tinted"><Check size={30}/><h2>All recipe steps are complete</h2>
         <p>Review your results, save notes, and finish the session.</p><Button onClick={() => setView("finish")}>Review and finish</Button></section>}
-      {active && focused && <div className="bake-step-actions">
-        <Button tone="ghost" disabled={!focused.progress.completed.length} onClick={() => undo(focused.version.id)}><RotateCcw size={18}/> Undo step</Button>
-        <Button onClick={completeStep}>Complete step <Check size={19}/></Button>
+      {active && focused && <div className="bake-step-actions" role="group" aria-label="Current step actions">
+        {timerSetupOpen && <div className="bake-inline-timer">
+          <Field label="Timer minutes"><input type="number" min="0.01" max="10080" step="any" inputMode="decimal"
+            placeholder={focused.step.minutes ? String(focused.step.minutes) : "Minutes"} value={timerMinutes}
+            onChange={(event) => setTimerMinutes(event.target.value)} /></Field>
+          <Button tone="secondary" onClick={startTimer}>Start timer</Button>
+          <Button tone="ghost" onClick={() => setTimerSetupOpen(false)} aria-label="Close timer setup">Cancel</Button>
+        </div>}
+        <div className="bake-action-buttons">
+          <Button tone="ghost" disabled={!focused.progress.completed.length} onClick={() => undo(focused.version.id)}>
+            <RotateCcw size={17}/> Undo</Button>
+          <Button tone="secondary" onClick={() => setTimerSetupOpen(!timerSetupOpen)} aria-expanded={timerSetupOpen}>
+            <Timer size={17}/> Set timer</Button>
+          <Button onClick={completeStep}>Complete step <Check size={18}/></Button>
+        </div>
       </div>}
     </>}
     {view === "prep" && <div className="bake-prep-grid">
