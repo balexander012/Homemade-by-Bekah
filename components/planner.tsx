@@ -2,7 +2,7 @@
 
 import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
-import { activeVersions, addDays, dateLabel, easternTimeExists, eventCategories, nextStep, occurs, timerTime, type Doc, type Entry, type Selection, type Version } from "@/lib/domain";
+import { activeVersions, addDays, dateLabel, easternTimeExists, eventCategories, isLaunchCheckSession, nextStep, occurs, timerTime, type Doc, type Entry, type Selection, type Version } from "@/lib/domain";
 import { eventRecipes, plannedBakes, planTasks, upcoming } from "@/lib/plan";
 import { recordsOf } from "@/lib/store";
 import type { WorkspaceStore } from "@/lib/use-workspace";
@@ -206,7 +206,7 @@ export function Today({ today, now, store, edit, start, resume, showCalendar, sh
   const records = store.records;
   const versions = store.library.versions;
   const events = recordsOf(records, "event");
-  const sessions = recordsOf(records, "session");
+  const sessions = recordsOf(records, "session").filter((item) => !isLaunchCheckSession(item.document.title));
   const active = sessions.filter(({ document }) => document.status === "Active");
   const scheduled = upcoming(events, today, 1);
   const bakes = useMemo(() => plannedBakes(recordsOf(records, "event"), versions, recordsOf(records, "session"), today), [records, versions, today]);
