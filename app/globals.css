@@ -876,3 +876,36 @@ textarea { min-height: 90px; }
   .bake-layout-picker .field { min-width: 0; flex: 1 1 100%; }
   .bake-layout-picker p { flex-basis: 100%; }
 }
+
+
+/* Reversible test-session clearing, intentionally separate from everyday baking. */
+.bake-landing .bake-manage-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px 15px; flex-wrap: wrap; }
+.bake-manage-bar .muted { margin: 0; font-size: 12px; }
+.bake-manage-bar .hb-btn { min-height: 36px; font-size: 12px; padding: 6px 11px; }
+.bake-manage-row { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.bake-manage-row > .bake-session-row { flex: 1 1 auto; min-width: 0; min-height: 62px; }
+.bake-manage-select { display: grid; place-items: center; min-height: 44px; min-width: 30px; cursor: pointer; }
+.bake-manage-select input { width: 19px; height: 19px; cursor: pointer; }
+.bake-selected-caption { color: var(--text-secondary); font-size: 12px; font-weight: 650; }
+.bake-manage-tools { display: grid; gap: 11px; padding: 13px 15px; background: var(--surface); border: 1px solid var(--border); border-radius: 11px; }
+.bake-manage-tools > p { color: var(--text-secondary); font-size: 13px; margin: 0; }
+.bake-manage-tools .hb-btn { min-height: 39px; font-size: 13px; }
+.bake-clear-confirm { display: grid; gap: 9px; padding: 13px; border: 1px solid var(--brand-primary); border-radius: 10px; background: var(--background-warm); }
+.bake-clear-confirm > strong { font-size: 15px; }
+.bake-clear-confirm > p { font-size: 13px; margin: 0; line-height: 1.4; }
+.bake-clear-confirm ul { max-height: 150px; overflow-y: auto; font-size: 13px; padding-left: 20px; margin: 0; }
+.bake-clear-confirm li { padding: 2px 0; }
+.bake-cleared-sessions { border-top: 1px solid var(--border); padding: 7px 0; }
+.bake-cleared-sessions > summary { min-height: 40px; font-size: 13px; color: var(--text-secondary); font-weight: 650; }
+.bake-cleared-sessions > p { font-size: 12px; padding: 5px 0 9px; margin: 0; }
+.bake-cleared-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; border: 1px solid var(--border); background: var(--surface); border-radius: 9px; padding: 9px 12px; }
+.bake-cleared-row > span { display: grid; gap: 3px; min-width: 0; }
+.bake-cleared-row strong { font-size: 13px; line-height: 1.3; overflow-wrap: anywhere; }
+.bake-cleared-row small { color: var(--text-secondary); font-size: 11px; }
+.bake-cleared-row .hb-btn { min-height: 35px; padding: 5px 10px; font-size: 12px; flex: none; }
+@media (max-width: 640px) {
+  .bake-landing .bake-manage-bar { align-items: flex-start; }
+  .bake-manage-row > .bake-session-row { padding: 9px 10px; gap: 8px; }
+  .bake-session-row .bake-session-symbol { width: 34px; height: 34px; }
+  .bake-selected-caption { font-size: 11px; }
+}
