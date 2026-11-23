@@ -1,5 +1,5 @@
 // The shell is public. Authenticated workspace data is stored separately by signed-in identity.
-const CACHE = "bekah-shell-v1";
+const CACHE = "bekah-shell-v2";
 const ASSETS = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/brand/hb-app-icon.svg",
   "/brand/hb-horizontal.svg", "/brand/hb-horizontal-reverse.svg", "/brand/fonts/Fraunces-Variable.woff2",
   "/brand/fonts/SourceSans3-Variable.woff2"];
@@ -26,9 +26,10 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
-  if (request.mode === "navigate" && url.pathname === "/") {
+  // Every authenticated app route uses the same offline-capable client shell.
+  if (request.mode === "navigate" && !url.pathname.startsWith("/api/") && !url.pathname.startsWith("/oauth/")) {
     event.respondWith(fetch(request).then(async (response) => {
-      if (response.ok) await (await caches.open(CACHE)).put("/", response.clone());
+      if (response.ok && url.pathname === "/") await (await caches.open(CACHE)).put("/", response.clone());
       return response;
     }).catch(() => caches.match("/")));
     return;
@@ -48,7 +49,7 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    const kitchen = windows.find((client) => new URL(client.url).pathname === "/");
+    const kitchen = windows.find((client) => new URL(client.url).origin === self.location.origin);
     if (kitchen) await kitchen.focus();
     else await self.clients.openWindow("/");
   })());
