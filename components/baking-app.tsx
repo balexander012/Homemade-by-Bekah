@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { BookOpen, CalendarDays, Camera, Ellipsis, LayoutDashboard } from "lucide-react";
+import { BookOpen, CalendarDays, Camera, ChefHat, LayoutDashboard, Settings2, ArrowRight, Clock3 } from "lucide-react";
 import type { Session as AuthSession, SupabaseClient } from "@supabase/supabase-js";
 import { easternDate, timerTime, type Entry } from "@/lib/domain";
 import { authStorageKey, browserClient, recordsOf } from "@/lib/store";
@@ -9,11 +9,10 @@ import { useWorkspace } from "@/lib/use-workspace";
 import { PhotoContext, usePhotoStore } from "@/lib/recipe-photos";
 import { Brand, Button, Field, message } from "./ui";
 
-// Each main destination has its own address (#today, #recipes...) so reloads and the installed app return to the same place.
-const tabFromHash = (hash: string) => nav.find(({ label }) => `#${label.toLowerCase()}` === hash.toLowerCase())?.label;
 import { Recipes, RecipeDetail, RecipeEditor } from "./recipes";
 import { Today, Calendar, EventEditor } from "./planner";
-import { BakingSession, StartSession } from "./session";
+import { StartSession } from "./session";
+import { BakeLanding, FocusedBakingSession } from "./session-focus";
 import { Photos } from "./photos";
 import { More, type Theme } from "./more";
 
@@ -21,15 +20,63 @@ const demoEnabled = process.env.NEXT_PUBLIC_LOCAL_DEMO === "1";
 const demoWorkspace = "10000000-0000-4000-8000-000000000000";
 type WorkspaceChoice = { id: string; name: string };
 const nav = [
-  { label: "Today", icon: LayoutDashboard }, { label: "Calendar", icon: CalendarDays },
-  { label: "Recipes", icon: BookOpen }, { label: "Photos", icon: Camera }, { label: "More", icon: Ellipsis },
+  { label: "Today", icon: LayoutDashboard }, { label: "Recipes", icon: BookOpen },
+  { label: "Bake", icon: ChefHat }, { label: "Calendar", icon: CalendarDays },
+  { label: "Photos", icon: Camera },
 ] as const;
-type Tab = typeof nav[number]["label"];
+type Tab = typeof nav[number]["label"] | "More";
 type Detail =
   | { screen: "event"; date: string; id?: string; title?: string }
   | { screen: "recipe" | "recipe-form"; id?: string; name?: string }
   | { screen: "start"; date: string; eventId?: string; versionId?: string }
   | { screen: "session"; id: string };
+
+const tabPaths: Record<Tab, string> = {
+  Today: "/", Recipes: "/recipes", Bake: "/bake", Calendar: "/planner", Photos: "/photos", More: "/settings",
+};
+function pathFor(tab: Tab, detail?: Detail) {
+  if (!detail) return tabPaths[tab];
+  const p = new URLSearchParams();
+  if (detail.screen === "recipe") return "/recipes/" + encodeURIComponent(detail.id ?? "");
+  if (detail.screen === "recipe-form") {
+    if (detail.name) p.set("name", detail.name);
+    return (detail.id ? "/recipes/" + encodeURIComponent(detail.id) + "/edit" : "/recipes/new") +
+      (p.size ? "?" + p : "");
+  }
+  if (detail.screen === "session") return "/bake/" + encodeURIComponent(detail.id);
+  if (detail.screen === "start") {
+    p.set("date", detail.date);
+    if (detail.eventId) p.set("eventId", detail.eventId);
+    if (detail.versionId) p.set("versionId", detail.versionId);
+    return "/bake/new?" + p;
+  }
+  p.set("date", detail.date);
+  if (detail.id) p.set("id", detail.id);
+  if (detail.title) p.set("title", detail.title);
+  return "/planner/event?" + p;
+}
+function locationState(): { tab: Tab; detail?: Detail } {
+  const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+  const params = new URLSearchParams(window.location.search);
+  const sections = pathname.split("/").filter(Boolean).map((part) => {
+    try { return decodeURIComponent(part); } catch { return part; }
+  });
+  if (pathname === "/recipes/new") return { tab: "Recipes", detail: { screen: "recipe-form", name: params.get("name") ?? undefined } };
+  if (sections[0] === "recipes" && sections[1]) return { tab: "Recipes", detail:
+    sections[2] === "edit" ? { screen: "recipe-form", id: sections[1] } : { screen: "recipe", id: sections[1] } };
+  if (pathname === "/bake/new") return { tab: "Bake", detail: { screen: "start",
+    date: params.get("date") ?? easternDate(), eventId: params.get("eventId") ?? undefined, versionId: params.get("versionId") ?? undefined } };
+  if (sections[0] === "bake" && sections[1]) return { tab: "Bake", detail: { screen: "session", id: sections[1] } };
+  if (pathname === "/planner/event") return { tab: "Calendar", detail: {
+    screen: "event", date: params.get("date") ?? easternDate(),
+    id: params.get("id") ?? undefined, title: params.get("title") ?? undefined } };
+  const current = (Object.keys(tabPaths) as Tab[]).find((tab) => tabPaths[tab] === pathname);
+  const legacy = window.location.hash.slice(1).toLowerCase();
+  const old = ({ today: "Today", recipes: "Recipes", calendar: "Calendar",
+    photos: "Photos", more: "More" } as Record<string, Tab>)[legacy];
+  return { tab: current ?? old ?? "Today" };
+}
+
 
 export function BakingApp() {
   const [client, setClient] = useState<SupabaseClient | null>(null);
@@ -155,13 +202,13 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
   const store = useWorkspace(client, workspace, identity, demo);
   const photoStore = usePhotoStore(client, workspace);
   const [tab, setTab] = useState<Tab>("Today");
+  const [detail, setDetail] = useState<Detail>();
   useEffect(() => {
-    const sync = () => { setTab(tabFromHash(window.location.hash) ?? "Today"); setDetail(undefined); };
+    const sync = () => { const state = locationState(); setTab(state.tab); setDetail(state.detail); };
     sync();
     window.addEventListener("popstate", sync);
     return () => window.removeEventListener("popstate", sync);
   }, []);
-  const [detail, setDetail] = useState<Detail>();
   const [now, setNow] = useState(Date.now);
   const today = easternDate(new Date(now));
   const [day, setDay] = useState(today);
@@ -256,61 +303,74 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
     } catch { setAlertMessage("Could not enable timer notifications on this device."); }
   }
 
+  const navigate = (next: Detail) => {
+    const related: Tab = next.screen === "recipe" || next.screen === "recipe-form" ? "Recipes" :
+      next.screen === "event" ? "Calendar" : "Bake";
+    setTab(related);
+    setDetail(next);
+    window.history.pushState(null, "", pathFor(related, next));
+  };
   const open = (next: Tab) => {
     setTab(next);
     setDetail(undefined);
-    const hash = `#${next.toLowerCase()}`;
-    if (window.location.hash !== hash) window.history.pushState(null, "", hash);
+    if (window.location.pathname !== tabPaths[next] || window.location.search || window.location.hash)
+      window.history.pushState(null, "", tabPaths[next]);
   };
-  const edit = (date: string, event?: Entry<"event">) => setDetail({ screen: "event", date, id: event?.id });
-  const resume = (id: string) => {
-    setDetail({ screen: "session", id });
-  };
+  const edit = (date: string, event?: Entry<"event">) => navigate({ screen: "event", date, id: event?.id });
+  const resume = (id: string) => navigate({ screen: "session", id });
   const start = (date: string, planned?: Entry<"event">) => {
     const existing = planned && sessions.find((session) => session.document.eventId === planned.id && session.document.date === date);
     if (existing) resume(existing.id);
-    else setDetail({ screen: "start", date, eventId: planned?.id });
+    else navigate({ screen: "start", date, eventId: planned?.id });
   };
 
   function render() {
     if (store.loading) return <p role="status">Loading your baking workspace…</p>;
     if (detail?.screen === "recipe-form") return <RecipeEditor key={detail.id ?? detail.name ?? "new"} store={store} version={version} initialName={detail.name}
-      complete={(id) => { setTab("Recipes"); setDetail({ screen: "recipe", id }); }} cancel={() => { if (version) setDetail({ screen: "recipe", id: version.id }); else open("Recipes"); }} />;
+      complete={(id) => { setTab("Recipes"); navigate({ screen: "recipe", id }); }} cancel={() => { if (version) navigate({ screen: "recipe", id: version.id }); else open("Recipes"); }} />;
     if (detail?.screen === "recipe" && version) return <RecipeDetail key={version.id} store={store} version={version}
-      show={(id) => setDetail({ screen: "recipe", id })} edit={() => setDetail({ screen: "recipe-form", id: version.id })}
-      back={() => open("Recipes")} bake={() => setDetail({ screen: "start", date: today, versionId: version.id })} />;
+      show={(id) => navigate({ screen: "recipe", id })} edit={() => navigate({ screen: "recipe-form", id: version.id })}
+      back={() => open("Recipes")} bake={() => navigate({ screen: "start", date: today, versionId: version.id })} />;
     if (detail?.screen === "event") return <EventEditor key={detail.id ?? "new"} day={detail.date} entry={event} initialTitle={detail.title} store={store}
-      close={(selectedDay, saved) => { setDay(selectedDay); if (saved) open("Calendar"); else setDetail(undefined); }} />;
-    if (detail?.screen === "start") return <StartSession date={detail.date} event={event} initialVersion={detail.versionId} store={store} close={() => setDetail(undefined)} started={resume} browse={() => open("Recipes")} />;
-    if (detail?.screen === "session" && active) return <BakingSession key={active.id} entry={active} store={store} now={now} photos={() => open("Photos")} audioReady={audioReady} sound={prepareAudio} />;
+      close={(selectedDay, saved) => { setDay(selectedDay); if (saved) open("Calendar"); else navigate(undefined); }} />;
+    if (detail?.screen === "start") return <StartSession date={detail.date} event={event} initialVersion={detail.versionId} store={store} close={() => navigate(undefined)} started={resume} browse={() => open("Recipes")} />;
+    if (detail?.screen === "session" && active) return <FocusedBakingSession key={active.id} entry={active} store={store} now={now} photos={() => open("Photos")} audioReady={audioReady} sound={prepareAudio} exit={() => open("Bake")} />;
     switch (tab) {
       case "Today": return <Today today={today} now={now} store={store} edit={edit} start={start} resume={resume} showCalendar={(date) => { setDay(date); open("Calendar"); }} showPhotos={() => open("Photos")} showRecipes={() => open("Recipes")} />;
+      case "Bake": return <BakeLanding sessions={sessions} now={now} start={() => start(today)} resume={resume} />;
       case "Calendar": return <Calendar day={day} setDay={setDay} today={today} store={store} edit={edit} start={start} />;
-      case "Recipes": return <Recipes store={store} show={(id) => setDetail({ screen: "recipe", id })} edit={() => setDetail({ screen: "recipe-form" })} />;
+      case "Recipes": return <Recipes store={store} show={(id) => navigate({ screen: "recipe", id })} edit={() => navigate({ screen: "recipe-form" })} />;
       case "Photos": return <Photos store={store} client={client} workspace={workspace} />;
       case "More": return <More store={store} client={client} workspace={workspace} theme={theme} setTheme={setTheme} alerts={alerts} alertMessage={alertMessage} toggleAlerts={() => void toggleAlerts()} signOut={signOut} demo={demo} resume={resume}
-        createRecipe={(name) => setDetail({ screen: "recipe-form", name })}
-        schedule={(title, date) => setDetail({ screen: "event", title, date: date ?? today })} />;
+        createRecipe={(name) => navigate({ screen: "recipe-form", name })}
+        schedule={(title, date) => navigate({ screen: "event", title, date: date ?? today })} />;
     }
   }
 
   const pending = Object.values(store.queue);
   const running = sessions.filter((item) => item.document.status === "Active");
   const nextTimer = running.flatMap((item) => item.document.timers).filter((timer) => !timer.cancelled).sort((a, b) => a.deadline - b.deadline)[0];
-  const inSession = detail?.screen === "session" || detail?.screen === "start";
-  const startLabel = running.length ? "Resume baking" : "Start baking";
   return <PhotoContext.Provider value={photoStore}><div className="shell">
     <a href="#workspace" className="skip">Skip to content</a>
-    <aside className="rail"><img className="rail-logo" src="/brand/hb-app-icon.svg" alt="" width="56" height="56" /><nav aria-label="Main navigation">
-      {nav.map(({ label, icon: Icon }) => <button type="button" key={label} aria-current={tab === label ? "page" : undefined} onClick={() => open(label)}>
-        <Icon size={23} strokeWidth={1.8} aria-hidden="true" /><span>{label}</span>
-      </button>)}
-    </nav>
-      {!inSession && <button type="button" className="rail-start" aria-label={startLabel} onClick={() => running.length ? resume(running[0].id) : start(today)}>
-        {startLabel}{nextTimer && <small aria-hidden="true">{nextTimer.deadline <= now ? "+" : ""}{timerTime(nextTimer.deadline - now)}</small>}
-      </button>}
+    <aside className="rail">
+      <div className="rail-head"><img className="rail-logo" src="/brand/hb-app-icon.svg" alt="" width="48" height="48" />
+        <span className="rail-brand"><strong>Homemade by Bekah</strong><small>Kitchen workspace</small></span></div>
+      <nav aria-label="Main navigation">
+        {nav.map(({ label, icon: Icon }) => <button type="button" key={label} aria-current={tab === label ? "page" : undefined} onClick={() => open(label)}>
+          <Icon size={21} strokeWidth={1.8} aria-hidden="true" /><span>{label === "Today" ? "Home" : label === "Calendar" ? "Planner" : label}</span>
+        </button>)}
+      </nav>
+      <div className="rail-footer">
+        {running.length > 0 && <button type="button" className="rail-running" onClick={() => resume(running[0].id)}>
+          <Clock3 size={19} aria-hidden="true" /><span><strong>Resume baking</strong><small>{nextTimer ? timerTime(nextTimer.deadline - now) + " next timer" : running[0].document.title}</small></span><ArrowRight size={16}/></button>}
+        <button type="button" className="rail-settings" aria-current={tab === "More" ? "page" : undefined} onClick={() => open("More")}>
+          <Settings2 size={21} aria-hidden="true" /><span>Settings</span></button>
+      </div>
     </aside>
     <main className="workspace" id="workspace">
+      <header className="mobile-topbar"><span>Homemade by Bekah</span><button type="button" aria-label="Settings" onClick={() => open("More")}><Settings2 size={22}/></button></header>
+      {running.length > 0 && detail?.screen !== "session" && <button type="button" className="mobile-resume" onClick={() => resume(running[0].id)}>
+        <Clock3 size={17} aria-hidden="true" /><strong>Resume baking</strong><span>{nextTimer ? timerTime(nextTimer.deadline - now) : ""}</span><ArrowRight size={17} aria-hidden="true"/></button>}
       <div className="statusbar">
         {demo && <span className="hb-sync hb-sync--pending">Local demo</span>}
         {!store.online && <span role="status" className="hb-sync hb-sync--offline">Offline</span>}
