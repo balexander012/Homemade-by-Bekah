@@ -27,8 +27,9 @@ export function RecipePicker({ versions, selected, onChange, empty }: { versions
   </fieldset>;
 }
 
-export function EventCard({ entry, day, store, edit, start, showNotes = true }: {
-  entry: Entry<"event">; day: string; store: WorkspaceStore; edit: () => void; start: () => void; showNotes?: boolean;
+export function EventCard({ entry, day, store, edit, start, showNotes = true, compact = false, resume }: {
+  entry: Entry<"event">; day: string; store: WorkspaceStore; edit: () => void; start: () => void;
+  showNotes?: boolean; compact?: boolean; resume?: () => void;
 }) {
   const event = entry.document;
   const { versions, approvals } = store.library;
@@ -44,18 +45,26 @@ export function EventCard({ entry, day, store, edit, start, showNotes = true }: 
     const change = newer.find((item) => item.from === row.versionId);
     return change ? { ...row, versionId: change.to } : row;
   }) }, entry.id);
-  return <article className="panel stack compact event-card" style={categoryColor(event.category)}>
-    <div className="line"><p className="eyebrow">{event.start ? `${event.start}${event.end ? `–${event.end}` : ""} · ${event.category}` : event.category}</p><Status>{event.status}</Status></div>
-    <h3>{event.title}</h3>
+  return <article className={"panel stack compact event-card" + (compact ? " today-event-card" : "")} style={categoryColor(event.category)}>
+    <div className="line"><p className="eyebrow">{event.start ? event.start + (event.end ? " to " + event.end : "") + " · " : ""}{event.category}</p>
+      <Status>{resume ? "In progress" : event.status}</Status></div>
+    <h3 title={event.title}>{event.title}</h3>
     {event.recurrence !== "None" && <p className="muted">{event.recurrence} · {dateLabel(day, { month: "short", day: "numeric" })}</p>}
     {((event.start && !easternTimeExists(day, event.start)) || (event.end && !easternTimeExists(day, event.end))) &&
       <p className="warning">This time falls in the daylight saving clock change. Confirm a time for this date.</p>}
-    {recipes.length > 0 && <ul>{recipes.map(({ version, target }) => <li key={version.id}>{version.document.name}{target ? ` · ${target} ${version.document.yieldUnit}` : ""}</li>)}</ul>}
+    {compact ? (recipes.length > 0 && <details className="today-event-recipes"><summary>{recipes.length} recipe{recipes.length === 1 ? "" : "s"} · View details</summary>
+      <ul>{recipes.map(({ version, target }) => <li key={version.id}>{version.document.name}{target ? " · " + target + " " + version.document.yieldUnit : ""}</li>)}</ul>
+    </details>) : (recipes.length > 0 && <ul>{recipes.map(({ version, target }) =>
+      <li key={version.id}>{version.document.name}{target ? " · " + target + " " + version.document.yieldUnit : ""}</li>)}</ul>)}
     {showNotes && event.notes && <details className="event-notes"><summary>Notes</summary><p className="muted whitespace-pre-wrap">{event.notes}</p></details>}
-    {newer.length > 0 && <div className="notice stack compact"><p>Newer recipe version: {newer.map((item) => item.name).join(", ")}.</p>
-      <div className="actions"><Button tone="secondary" onClick={upgrade}>Use the newer version</Button></div></div>}
+    {newer.length > 0 && (compact ? <details className="today-version-update"><summary>Newer recipe version available</summary>
+      <p className="muted">{newer.map((item) => item.name).join(", ")}</p>
+      <Button tone="secondary" onClick={upgrade}>Use newer version for this event</Button>
+      {resume && <p className="muted">The active baking session keeps its current recipe version.</p>}
+    </details> : <div className="notice stack compact"><p>Newer recipe version: {newer.map((item) => item.name).join(", ")}.</p>
+      <div className="actions"><Button tone="secondary" onClick={upgrade}>Use the newer version</Button></div></div>)}
     <div className="actions"><Button tone="secondary" onClick={edit}>Edit event</Button>
-      {event.status === "Scheduled" && <Button onClick={start}>Start baking</Button>}</div>
+      {resume ? <Button onClick={resume}>Resume session</Button> : event.status === "Scheduled" && <Button onClick={start}>Start baking</Button>}</div>
   </article>;
 }
 
