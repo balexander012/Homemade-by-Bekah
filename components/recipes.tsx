@@ -57,7 +57,7 @@ export function Recipes({ store, show, edit }: { store: WorkspaceStore; show: (i
         <RecipeImage recipeId={version.recipe_id} name={version.document.name} category={version.document.category} />
         <div className="body">
           <h2><button type="button" onClick={() => show(version.id)}>{version.document.name}</button></h2>
-          <div className="line"><Status>{isApproved(version) ? "Approved" : version.document.status}</Status>{store.library.favorites.includes(version.recipe_id) && <Star aria-label="Favorite" size={19} />}</div>
+          <div className="line"><Status>{version.document.status}</Status>{isApproved(version) && <Status>Preferred</Status>}{store.library.favorites.includes(version.recipe_id) && <Star aria-label="Favorite" size={19} />}</div>
           <p className="muted">{version.document.yieldLow ? `Makes ${version.document.yieldLow}${version.document.yieldHigh ? `–${version.document.yieldHigh}` : ""} ${version.document.yieldUnit}` : "Yield to verify"}</p>
         </div>
       </article>)}</div>
