@@ -332,8 +332,8 @@ function Workspace({ client, workspace, identity, signOut }: { client: SupabaseC
       show={(id) => navigate({ screen: "recipe", id })} edit={() => navigate({ screen: "recipe-form", id: version.id })}
       back={() => open("Recipes")} bake={() => navigate({ screen: "start", date: today, versionId: version.id })} />;
     if (detail?.screen === "event") return <EventEditor key={detail.id ?? "new"} day={detail.date} entry={event} initialTitle={detail.title} store={store}
-      close={(selectedDay, saved) => { setDay(selectedDay); if (saved) open("Calendar"); else navigate(undefined); }} />;
-    if (detail?.screen === "start") return <StartSession date={detail.date} event={event} initialVersion={detail.versionId} store={store} close={() => navigate(undefined)} started={resume} browse={() => open("Recipes")} />;
+      close={(selectedDay, saved) => { setDay(selectedDay); if (saved) open("Calendar"); else open("Calendar"); }} />;
+    if (detail?.screen === "start") return <StartSession date={detail.date} event={event} initialVersion={detail.versionId} store={store} close={() => open("Bake")} started={resume} browse={() => open("Recipes")} />;
     if (detail?.screen === "session" && active) return <FocusedBakingSession key={active.id} entry={active} store={store} now={now} photos={() => open("Photos")} audioReady={audioReady} sound={prepareAudio} exit={() => open("Bake")} />;
     switch (tab) {
       case "Today": return <Today today={today} now={now} store={store} edit={edit} start={start} resume={resume} showCalendar={(date) => { setDay(date); open("Calendar"); }} showPhotos={() => open("Photos")} showRecipes={() => open("Recipes")} />;
