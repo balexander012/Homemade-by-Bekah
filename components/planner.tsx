@@ -331,7 +331,6 @@ export function Today({ today, now, store, edit, start, resume, showCalendar, sh
               {bakes.equipment.length > 0 && <p><strong>Equipment:</strong> {bakes.equipment.join(", ")}</p>}
             </div>
           </details>}
-          <Button className="today-task-add-button" tone="ghost" onClick={() => setAdding(true)}><Plus size={16}/> Add task</Button>
         </section>
       </div>
     </>}
