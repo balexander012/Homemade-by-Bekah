@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "photo",
+  "importId": "0aa2a128-8283-4508-834e-622d175cfda5",
+  "recipeKey": "jumbo-chocolate-chip-cookies",
+  "recipeName": "Bekah's Jumbo Chocolate Chip Cookies",
+  "setAsPrimary": true,
+  "mode": "add",
+  "caption": "",
+  "filename": "chocolate-chip-cookies.jpg",
+  "image": {
+    "contentType": "image/jpeg",
+    "sha256": "ce75bfe5bbca7f7883b569dde06a7dc0f98a621d1eff91bfac47e98411cafb2e",
+    "parts": 16
+  }
+}
