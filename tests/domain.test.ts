@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, blankRecipe, currentSteps, isLaunchCheckSession, easternDate, easternTimeExists, eventSchema, formatAmount, newSession, nextStep, occurs, recipeSchema, scale, sharedIngredients, type Entry, type Ingredient, type Version } from "../lib/domain";
+import { addDays, blankRecipe, clearBakingSession, currentSteps, isLaunchCheckSession, easternDate, easternTimeExists, eventSchema, formatAmount, newSession, nextStep, occurs, recipeSchema, restoreBakingSession, scale, sharedIngredients, sessionSchema, type Entry, type Ingredient, type Version } from "../lib/domain";
 import { planTasks } from "../lib/plan";
 
 const id = () => crypto.randomUUID();
@@ -105,5 +105,28 @@ describe("guided baking", () => {
   it("prevents incomplete reference recipes from becoming baking-ready", () => {
     expect(recipeSchema.safeParse({ ...blankRecipe("Reference"), status: "Ready for Testing" }).success).toBe(false);
     expect(recipeSchema.safeParse(cookie().document).success).toBe(true);
+  });
+});
+
+describe("reversible session clearing", () => {
+  it("hides test progress, stops timers and preserves recipe selections and completed steps", () => {
+    const version = cookie("Test cookie");
+    const session = newSession("Test cookies", "2026-11-22", [{ versionId: version.id, target: null }]);
+    session.recipes[0].completed.push(version.document.steps[0].id);
+    session.timers = [{
+      id: id(), versionId: version.id, stepId: version.document.steps[1].id,
+      label: "Test timer", start: 100, deadline: 30100, cancelled: false,
+    }];
+    const cleared = clearBakingSession(session);
+    expect(session.cleared).toBeUndefined();
+    expect(session.timers[0].cancelled).toBe(false);
+    expect(cleared.cleared).toBe(true);
+    expect(cleared.timers[0].cancelled).toBe(true);
+    expect(cleared.recipes).toEqual(session.recipes);
+    expect(sessionSchema.parse(cleared).cleared).toBe(true);
+    const restored = restoreBakingSession(cleared);
+    expect(restored.cleared).toBe(false);
+    expect(restored.recipes).toEqual(session.recipes);
+    expect(restored.timers[0].cancelled).toBe(true);
   });
 });

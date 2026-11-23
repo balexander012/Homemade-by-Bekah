@@ -221,7 +221,7 @@ export function Today({ today, now, store, edit, start, resume, showCalendar, sh
   const records = store.records;
   const versions = store.library.versions;
   const events = recordsOf(records, "event");
-  const sessions = recordsOf(records, "session").filter((item) => !isLaunchCheckSession(item.document.title));
+  const sessions = recordsOf(records, "session").filter((item) => !isLaunchCheckSession(item.document.title) && !item.document.cleared);
   const active = sessions.filter(({ document }) => document.status === "Active");
   const scheduled = upcoming(events, today, 1).filter(({ entry }) => entry.document.status !== "Cancelled");
   const bakes = useMemo(() => plannedBakes(events, versions, sessions, today), [events, versions, sessions, today]);

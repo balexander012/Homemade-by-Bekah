@@ -437,3 +437,50 @@ test("single recipe step cards keep the same height after advancing", async ({ p
   const secondHeight = await step.evaluate((node) => node.getBoundingClientRect().height);
   expect(Math.abs(firstHeight - secondHeight)).toBeLessThan(2);
 });
+
+
+test("clears selected test baking sessions, preserves recipes, and allows restoration", async ({ page }) => {
+  await page.goto("/");
+  for (const name of ["Practice bake cookies", "Practice bake cinnamon rolls"]) {
+    await createRecipe(page, name);
+    await page.getByRole("button", { name: "Start baking" }).first().click();
+    await page.getByText("Session details").click();
+    await page.getByLabel("Session name").fill("Test session for " + name);
+    await page.getByRole("button", { name: "Begin session" }).click();
+    if (name === "Practice bake cookies") {
+      await page.getByRole("button", { name: "Complete step" }).click();
+    }
+  }
+  await navigation(page, "Bake").click();
+  await expect(page.locator(".bake-manage-row")).toHaveCount(2);
+  await page.getByRole("button", { name: "Manage sessions" }).click();
+  await page.getByRole("checkbox", { name: "Select Test session for Practice bake cookies" }).check();
+  await page.getByRole("checkbox", { name: "Select Test session for Practice bake cinnamon rolls" }).check();
+  await page.getByRole("button", { name: "Clear selected (2)" }).click();
+  const confirmation = page.getByRole("group", { name: "Confirm clearing sessions" });
+  await expect(confirmation).toContainText("Test session for Practice bake cookies");
+  await expect(confirmation).toContainText("Test session for Practice bake cinnamon rolls");
+  await confirmation.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.locator(".bake-manage-row")).toHaveCount(2);
+  await page.getByRole("button", { name: "Clear selected (2)" }).click();
+  await confirmation.getByRole("button", { name: "Yes, clear 2" }).click();
+  await expect(page.getByText("Ready for your next bake?")).toBeVisible();
+  await expect(page.getByText("Cleared sessions (2)")).toBeVisible();
+
+  await navigation(page, "Photos").click();
+  await expect(page.getByRole("heading", { name: "No batches ready for photos" })).toBeVisible();
+  await navigation(page, "Recipes").click();
+  await expect(page.locator(".recipe-card").filter({ hasText: "Practice bake cookies" })).toBeVisible();
+  await expect(page.locator(".recipe-card").filter({ hasText: "Practice bake cinnamon rolls" })).toBeVisible();
+
+  await navigation(page, "Bake").click();
+  await page.getByText("Cleared sessions (2)").click();
+  const cleared = page.locator(".bake-cleared-row").filter({ hasText: "Test session for Practice bake cookies" });
+  await cleared.getByRole("button", { name: "Restore" }).click();
+  await expect(page.locator(".bake-session-list").filter({ hasText: "Test session for Practice bake cookies" })).toBeVisible();
+  await expect(page.getByText("Cleared sessions (1)")).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("Cleared sessions (1)")).toBeVisible();
+  await navigation(page, "Photos").click();
+  await expect(page.getByRole("heading", { name: "Practice bake cookies" })).toBeVisible();
+});

@@ -239,7 +239,7 @@ function References({ store, client, workspace }: { store: WorkspaceStore; clien
 export function Photos({ store, client, workspace }: { store: WorkspaceStore; client: SupabaseClient | null; workspace: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const queue = recordsOf(store.records, "session")
-    .filter((session) => !isLaunchCheckSession(session.document.title))
+    .filter((session) => !isLaunchCheckSession(session.document.title) && !session.document.cleared)
     .flatMap((session) => session.document.recipes.flatMap((recipe) => {
       const version = store.library.versions.find((item) => item.id === recipe.versionId);
       return version?.document.steps.length && version.document.steps.every((step) => recipe.completed.includes(step.id))
