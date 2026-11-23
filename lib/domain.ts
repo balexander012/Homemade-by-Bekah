@@ -201,7 +201,7 @@ export function formatAmount(value: ReturnType<typeof scale>) {
     return number.eq(rounded) ? rounded : `≈ ${rounded}`;
   };
   const range = value.upper && !value.amount.eq(value.upper) ? ` to ${format(value.upper)}` : "";
-  return `${format(value.amount)}${range} ${kitchenUnit(value.unit, value.upper ?? value.amount)}`.trim();
+  return `${format(value.amount)}${range} ${kitchenUnit(value.unit, value.upper)}`.trim();
 }
 
 export function sharedIngredients(selections: Selection[], versions: Version[]) {
