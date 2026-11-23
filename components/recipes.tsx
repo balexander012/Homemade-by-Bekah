@@ -186,6 +186,8 @@ export function RecipeDetail({ store, version, show, edit, back, bake }: {
         <Button tone="ghost" onClick={() => show(lastBake.versionId)}>View the exact version used</Button>}
     </section>}
     <RecipePhotoSection recipeId={version.recipe_id} name={recipe.name} />
+    {store.library.versions.filter((item) => item.recipe_id === version.recipe_id).length > 1 &&
+      <p className="muted recipe-photo-version-note">Cover photos are shared across revisions of a recipe. A photo alone does not identify which version was baked.</p>}
     {recipe.description && <p>{recipe.description}</p>}
     {recipe.source && <p className="muted">Source · {recipe.source}</p>}
     {recipe.tags.length > 0 && <p className="muted">{recipe.tags.join(" · ")}</p>}
