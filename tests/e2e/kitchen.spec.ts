@@ -54,7 +54,7 @@ test("plans and reschedules batches, then resumes state and timers after an offl
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: "Friday cookie test", exact: true })).toBeVisible();
+  await expect(page.locator(".bake-session-summary")).toHaveText("Friday cookie test");
   await expect(page.getByText("Offline", { exact: true })).toBeVisible();
   await page.getByRole("navigation", { name: "Baking session sections" }).getByRole("button", { name: "Overview" }).click();
   await expect(page.locator(".bake-overview-row").filter({ hasText: "Test lemon cookies" })).toContainText("1 of 1 steps");
