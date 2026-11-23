@@ -7,6 +7,7 @@ import type { WorkspaceStore } from "@/lib/use-workspace";
 import { taskId } from "@/lib/plan";
 import { RecipePicker } from "./planner";
 import { Button, Field, Heading, Status, message } from "./ui";
+import { RecipeImage } from "./recipe-photos";
 
 const modeHelp: Record<string, string> = {
   "Sequential": "One recipe at a time. Best for new or tricky recipes.",
@@ -151,7 +152,7 @@ export function BakingSession({ entry, store, now, photos, sound, audioReady }: 
           const stepKey = `${version.id}:${step.id}`;
           return <article className="panel stack" key={version.id}>
             <div className="line"><p className="eyebrow">Step {index + 1} of {recipe.steps.length}</p><Status>{waiting ? "Timer running" : step.kind}</Status></div>
-            <h3>{recipe.name}</h3>
+            <div className="session-recipe"><RecipeImage recipeId={version.recipe_id} name={recipe.name} size="small" /><h3>{recipe.name}</h3></div>
             <p className="step-copy">{step.instruction}</p>
             {step.temperature && <p><strong>{step.temperature} °F</strong>{step.minutes ? ` · ${step.minutes} min` : ""}</p>}
             {progress.target && step.kind === "Oven" && <p className="warning">Check pan size, tray space, and bake time for this batch size.</p>}

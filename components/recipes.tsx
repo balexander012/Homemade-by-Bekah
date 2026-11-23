@@ -10,6 +10,7 @@ import { recordsOf } from "@/lib/store";
 import type { WorkspaceStore } from "@/lib/use-workspace";
 import { Button, Field, Heading, Status, message } from "./ui";
 import { RecipeReview } from "./recipe-review";
+import { RecipeImage, RecipePhotoSection } from "./recipe-photos";
 
 const split = (text: string) => text.split(",").map((item) => item.trim()).filter(Boolean);
 const number = (text: string) => text === "" ? undefined : Number(text);
@@ -53,7 +54,7 @@ export function Recipes({ store, show, edit }: { store: WorkspaceStore; show: (i
       </div>
       {matches.length === 0 && <section className="panel empty-state"><BookOpen aria-hidden="true" /><h2 className="display">{versions.length ? "No matching recipes" : "Start your recipe library"}</h2><p className="muted">{versions.length ? "Try a different filter, search or category." : "Save a recipe you make often or start a draft from your notes."}</p></section>}
       <div className="recipe-grid">{matches.map((version) => <article className="panel recipe-card" key={version.id}>
-        <div className="recipe-thumb" aria-hidden="true"><BookOpen size={26} />{version.document.category}</div>
+        <RecipeImage recipeId={version.recipe_id} name={version.document.name} category={version.document.category} />
         <div className="body">
           <h2><button type="button" onClick={() => show(version.id)}>{version.document.name}</button></h2>
           <div className="line"><Status>{isApproved(version) ? "Approved" : version.document.status}</Status>{store.library.favorites.includes(version.recipe_id) && <Star aria-label="Favorite" size={19} />}</div>
@@ -96,6 +97,7 @@ export function RecipeDetail({ store, version, show, edit, back, bake }: {
       <Button onClick={() => void run(async () => { await store.approve(version); setConfirmation(false); })}>Make preferred</Button>
       <Button tone="ghost" onClick={() => setConfirmation(false)}>Cancel</Button>
     </div></section>}
+    <RecipePhotoSection recipeId={version.recipe_id} name={recipe.name} />
     {recipe.description && <p>{recipe.description}</p>}
     {recipe.source && <p className="muted">Source · {recipe.source}</p>}
     {recipe.tags.length > 0 && <p className="muted">{recipe.tags.join(" · ")}</p>}

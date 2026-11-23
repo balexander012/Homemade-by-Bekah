@@ -144,3 +144,63 @@ test("makes an untested, finalized recipe preferred without calling it tested", 
   await page.getByRole("button", { name: "Start baking" }).first().click();
   await expect(page.getByText("Test finalized rolls").first()).toBeVisible();
 });
+
+test("adds recipe photos, sets and changes the main photo, and removes one without touching the recipe", async ({ page }) => {
+  const sharp = (await import("sharp")).default;
+  const jpeg = (r: number, g: number, b: number) => sharp({ create: { width: 1600, height: 1200, channels: 3, background: { r, g, b } } }).jpeg().toBuffer();
+  await page.goto("/");
+  await createRecipe(page, "Test photo cookies");
+  const ingredients = await page.getByRole("heading", { name: "Ingredients" }).locator("..").innerText();
+  await page.getByRole("button", { name: "Add Photos" }).click();
+  await page.locator('input[type="file"]').setInputFiles([
+    { name: "first.jpg", mimeType: "image/jpeg", buffer: await jpeg(200, 140, 60) },
+    { name: "second.jpg", mimeType: "image/jpeg", buffer: await jpeg(90, 60, 30) },
+  ]);
+  await expect(page.getByAltText("Preview of second.jpg")).toBeVisible();
+  // The first photo is the default main photo when the recipe has none.
+  await expect(page.getByRole("radio", { name: "Main photo" }).first()).toBeChecked();
+  await page.getByRole("button", { name: "Edit photo" }).first().click();
+  await page.getByRole("button", { name: "Rotate" }).click();
+  await page.getByLabel("Zoom").fill("1.5");
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "Save 2 photos" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Photos saved." })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Select photo 1, main photo" })).toBeVisible();
+  await expect(page.locator(".recipe-hero img")).toBeVisible();
+  const hero = await page.locator(".recipe-hero img").evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight]);
+  expect(hero).toEqual([1920, 1080]);
+  // The main photo replaces the placeholder on the recipe card.
+  await page.getByRole("button", { name: "All recipes" }).click();
+  const card = page.locator(".recipe-card").filter({ hasText: "Test photo cookies" });
+  await expect(card.locator(".recipe-thumb.has-photo img")).toBeVisible();
+  await card.getByRole("button", { name: "Test photo cookies" }).click();
+  // Change the main photo, reorder, caption, then remove one after confirming.
+  await page.getByRole("button", { name: "Select photo 2" }).click();
+  await page.getByRole("button", { name: "Set as Main" }).click();
+  await expect(page.getByRole("button", { name: "Select photo 2, main photo" })).toBeVisible();
+  await page.getByLabel("Caption", { exact: true }).fill("Golden edges");
+  await page.getByRole("button", { name: "Save caption" }).click();
+  await expect(page.getByText("Golden edges", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Move earlier" }).click();
+  await expect(page.getByRole("button", { name: "Select photo 1, main photo" })).toBeVisible();
+  await page.getByRole("button", { name: "Select photo 2" }).click();
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  await page.getByRole("button", { name: "Remove photo" }).click();
+  await expect(page.locator(".photo-gallery li")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Select photo 1, main photo" })).toBeVisible();
+  // Photos never create a recipe revision or change the formula.
+  expect(await page.getByRole("heading", { name: "Ingredients" }).locator("..").innerText()).toBe(ingredients);
+  await expect(page.getByRole("heading", { name: "Version history" }).locator("..").locator(".row")).toHaveCount(1);
+  // The main photo also shows when choosing recipes to bake.
+  await page.getByRole("button", { name: "Start baking" }).first().click();
+  await expect(page.locator(".pick .recipe-thumb.has-photo img").first()).toBeVisible();
+});
+
+test("explains unsupported photo files instead of saving them", async ({ page }) => {
+  await page.goto("/");
+  await createRecipe(page, "Test unsupported photo");
+  await page.getByRole("button", { name: "Add Photos" }).click();
+  await page.locator('input[type="file"]').setInputFiles([{ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("not a photo") }]);
+  await expect(page.locator(".photo-dialog .notice.error")).toContainText("notes.txt is not a JPEG, PNG, WebP or HEIC photo.");
+  await expect(page.getByRole("button", { name: /Save .*photo/ })).toBeDisabled();
+});
