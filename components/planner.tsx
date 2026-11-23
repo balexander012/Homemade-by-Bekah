@@ -185,20 +185,25 @@ function TaskRow({ task, store }: { task: Entry<"task">; store: WorkspaceStore }
   const [date, setDate] = useState(task.document.date);
   const [title, setTitle] = useState(task.document.title);
   const [edit, setEdit] = useState(false);
-  return <div className="row">
-    <div className="line">
+  return <div className={"today-task" + (task.document.status === "Done" ? " is-done" : "")}>
+    <div className="today-task-main">
       <label className="check"><input type="checkbox" checked={task.document.status === "Done"}
-        onChange={(e) => store.put("task", { ...task.document, status: e.target.checked ? "Done" : "Open" }, task.id)} /><span>{task.document.title}</span></label>
-      <Button tone="ghost" onClick={() => {
+        onChange={(e) => store.put("task", { ...task.document, status: e.target.checked ? "Done" : "Open" }, task.id)} />
+        <span>{task.document.title}</span></label>
+      <Button tone="ghost" className="today-task-edit" onClick={() => {
         setTitle(task.document.title);
         setDate(task.document.date);
         setEdit(!edit);
       }}>{edit ? "Close" : "Edit task"}</Button>
     </div>
-    {edit && <form className="stack" onSubmit={(e) => { e.preventDefault(); store.put("task", { ...task.document, title, date, offset: undefined }, task.id); setEdit(false); }}>
+    {edit && <form className="today-task-editor stack compact" onSubmit={(e) => {
+      e.preventDefault(); store.put("task", { ...task.document, title, date, offset: undefined }, task.id); setEdit(false);
+    }}>
       <Field label="Task title"><input required maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
       <Field label="Task date"><input required type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
-      <div className="actions"><Button type="submit">Save task</Button><Button tone="ghost" onClick={() => store.put("task", { ...task.document, status: "Dismissed" }, task.id)}>Dismiss task</Button></div>
+      <div className="actions"><Button type="submit">Save task</Button>
+        <Button tone="ghost" onClick={() => { store.put("task", { ...task.document, status: "Dismissed" }, task.id); setEdit(false); }}>Dismiss task</Button>
+      </div>
     </form>}
   </div>;
 }
@@ -210,6 +215,7 @@ export function Today({ today, now, store, edit, start, resume, showCalendar, sh
 }) {
   const [tasks, setTasks] = useState<Entry<"task">[]>([]);
   const [adding, setAdding] = useState(false);
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [title, setTitle] = useState("");
   const [section, setSection] = useState<Doc<"task">["section"]>("Preparation");
   const records = store.records;
@@ -217,9 +223,10 @@ export function Today({ today, now, store, edit, start, resume, showCalendar, sh
   const events = recordsOf(records, "event");
   const sessions = recordsOf(records, "session").filter((item) => !isLaunchCheckSession(item.document.title));
   const active = sessions.filter(({ document }) => document.status === "Active");
-  const scheduled = upcoming(events, today, 1);
-  const bakes = useMemo(() => plannedBakes(recordsOf(records, "event"), versions, recordsOf(records, "session"), today), [records, versions, today]);
-  const coming = upcoming(events, addDays(today, 1), 14).slice(0, 5);
+  const scheduled = upcoming(events, today, 1).filter(({ entry }) => entry.document.status !== "Cancelled");
+  const bakes = useMemo(() => plannedBakes(events, versions, sessions, today), [events, versions, sessions, today]);
+  const coming = upcoming(events, addDays(today, 1), 14)
+    .filter(({ entry }) => entry.document.status !== "Cancelled");
   useEffect(() => {
     let cancelled = false;
     void planTasks(recordsOf(records, "event"), recordsOf(records, "task"), versions, today, 2).then((rows) => {
@@ -227,88 +234,126 @@ export function Today({ today, now, store, edit, start, resume, showCalendar, sh
     });
     return () => { cancelled = true; };
   }, [records, today, versions]);
-  const open = tasks.filter((row) => row.document.status !== "Dismissed");
-  const marked = open.filter((row) => row.document.date === today || (row.document.date < today && row.document.status === "Open"));
-  const tomorrow = open.filter((row) => row.document.date === addDays(today, 1));
-  const suggested = active[0] && nextStep(active[0].document, versions, now);
-  const next = marked.find((task) => task.document.status === "Open");
-  const sections = ["Preparation", "Baking", "Photography", "Wrap Up"] as const;
-  const hasSection = (name: typeof sections[number]) => marked.some((task) => task.document.section === name) ||
-    (name === "Preparation" && (bakes.ingredients.length > 0 || bakes.equipment.length > 0)) ||
-    (name === "Baking" && bakes.recipes.length > 0) || (name === "Photography" && bakes.recipes.some((item) => item.photo));
-  const checklist = sections.filter(hasSection);
+  const visibleTasks = tasks.filter((row) => row.document.status !== "Dismissed");
+  const marked = visibleTasks.filter((row) => row.document.date === today ||
+    (row.document.date < today && row.document.status === "Open"));
+  const pending = marked.filter(({ document }) => document.status === "Open");
+  const done = marked.filter(({ document }) => document.status === "Done");
+  const tomorrow = visibleTasks.filter((row) => row.document.date === addDays(today, 1));
   const dismissed = tasks.filter((task) => task.document.status === "Dismissed" && task.document.date >= today);
-  const quiet = !active.length && !scheduled.length && !checklist.length && !adding;
-  const addTask = adding && <form className="stack" onSubmit={(e) => { e.preventDefault(); store.put("task", { title, date: today, section, status: "Open" }); setTitle(""); setAdding(false); }}>
+  const sections = ["Preparation", "Baking", "Photography", "Wrap Up"] as const;
+  const hasPrep = bakes.ingredients.length > 0 || bakes.equipment.length > 0;
+  const quiet = active.length === 0 && scheduled.length === 0 && pending.length === 0;
+  const addTask = adding && <form className="today-new-task" onSubmit={(e) => {
+    e.preventDefault(); store.put("task", { title, date: today, section, status: "Open" }); setTitle(""); setAdding(false);
+  }}>
     <Field label="Task title"><input required maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
-    <Field label="Plan section"><select value={section} onChange={(e) => setSection(e.target.value as typeof section)}>{sections.map((name) => <option key={name}>{name}</option>)}</select></Field>
-    <div className="actions"><Button type="submit">Save task</Button><Button tone="ghost" onClick={() => setAdding(false)}>Cancel</Button></div>
+    <Field label="Section"><select value={section} onChange={(e) => setSection(e.target.value as typeof section)}>
+      {sections.map((name) => <option key={name}>{name}</option>)}</select></Field>
+    <div className="actions"><Button type="submit">Save task</Button>
+      <Button tone="ghost" onClick={() => setAdding(false)}>Cancel</Button></div>
   </form>;
-  return <>
-    <Heading title="Today’s Plan" detail={dateLabel(today)}><div className="actions">
-      <Button tone="secondary" onClick={() => edit(today)}><Plus size={20} /> Add event</Button>
-      <Button tone="ghost" onClick={() => setAdding(!adding)}>{adding ? "Close" : "Add task"}</Button>
-    </div></Heading>
-    <div className="stack">
-      {addTask && <section className="panel stack"><h2>New task for today</h2>{addTask}</section>}
-      {quiet ? <section className="panel empty-state tinted"><h2 className="display">Nothing planned today</h2>
-        <p className="muted">Plan a bake for later, or pick a recipe and start one now.</p>
-        <div className="actions"><Button onClick={() => edit(today)}>Plan a bake</Button><Button tone="secondary" onClick={showRecipes}>Browse recipes</Button></div>
-      </section> : <section className="panel next-action stack compact"><p className="eyebrow">Next action</p>
-        {suggested ? <><h2>{suggested.version.document.name}</h2><p className="step-copy line-clamp-3">{suggested.step.instruction}</p></> :
-          active.length ? <p className="step-copy">Pick up where you left off in {active[0].document.title}.</p> :
-          next ? <p className="step-copy">{next.document.title}</p> :
-          scheduled.length ? <p className="step-copy">{scheduled[0].entry.document.title}</p> : <p className="step-copy">Check off today’s list below.</p>}
-      </section>}
-      {active.length > 0 && <section className="stack"><h2>In the kitchen</h2><div className="tiles">{active.map((entry) => {
-        const timers = entry.document.timers.filter((timer) => !timer.cancelled).sort((a, b) => a.deadline - b.deadline);
-        const first = timers[0];
-        return <article key={entry.id} className={`panel stack ${first && first.deadline <= now ? "timer-alert" : ""}`}>
-          <h3>{entry.document.title}</h3><p className="muted">{entry.document.recipes.length} batches · {entry.document.mode}</p>
-          {first && <><p className="timer">{first.deadline <= now ? "+" : ""}{timerTime(first.deadline - now)}</p>
-            <p>{first.deadline <= now ? "Overdue" : "Timer running"} · {first.label}</p></>}
-          <Button tone="secondary" onClick={() => resume(entry.id)}>Resume session</Button>
-        </article>;
-      })}</div></section>}
-      {(scheduled.length > 0 || checklist.length > 0) && <div className={checklist.length ? "cols" : "stack"}>
-        <section className="stack"><h2>Today’s schedule</h2>
-          {scheduled.length ? scheduled.map(({ entry, day }) => <EventCard key={entry.id} entry={entry} day={day} store={store} showNotes={false} edit={() => edit(day, entry)} start={() => start(day, entry)} />) :
-            <p className="panel muted"><CalendarDays className="inline mr-2" size={22} /> Nothing on the calendar today.</p>}
-        </section>
-        {checklist.length > 0 && <section className="panel stack"><h2>Checklist</h2>
-          {checklist.map((name) => <div key={name} className="checklist-section stack compact"><h3>{name}</h3>
-            {marked.filter((task) => task.document.section === name).map((task) => <TaskRow key={task.id} store={store} task={task} />)}
-            {name === "Preparation" && (bakes.ingredients.length > 0 || bakes.equipment.length > 0) && <details className="row">
-              <summary>Ingredients and equipment</summary><div className="stack compact">
-                {bakes.ingredients.map((item) => <p key={item.key}><strong>{item.amount}</strong> · {item.name}{item.preparation ? ` · ${item.preparation}` : ""}</p>)}
-                {bakes.equipment.length > 0 && <p>Set out {bakes.equipment.join(", ")}.</p>}
+  return <div className="today-page">
+    <Heading title="Today’s Plan" detail={dateLabel(today)}>
+      <div className="actions today-page-actions">
+        <Button tone="secondary" onClick={() => edit(today)}><Plus size={17} /> Add event</Button>
+        <Button tone="ghost" onClick={() => setAdding(!adding)}>{adding ? "Close" : "Add task"}</Button>
+      </div>
+    </Heading>
+    {adding && <section className="panel stack compact today-task-add"><h2>New task</h2>{addTask}</section>}
+    {quiet ? <section className="today-quiet">
+      <h2>Nothing urgent today</h2>
+      <p className="muted">Plan a baking session or choose a recipe to work on.</p>
+      <div className="actions"><Button onClick={() => edit(today)}>Plan a bake</Button>
+        <Button tone="secondary" onClick={showRecipes}>Browse recipes</Button></div>
+    </section> : <>
+      {active.length > 0 && <section className="today-live-section" aria-label="Active baking sessions">
+        <div className="today-section-heading"><h2>In the kitchen</h2>
+          <span className="today-section-count">{active.length} active</span></div>
+        <div className="today-live-list">{active.map((entry) => {
+          const total = entry.document.recipes.reduce((count, row) =>
+            count + (versions.find((version) => version.id === row.versionId)?.document.steps.length ?? 0), 0);
+          const completed = entry.document.recipes.reduce((count, row) => count + row.completed.length, 0);
+          const step = nextStep(entry.document, versions, now);
+          const timers = entry.document.timers.filter((timer) => !timer.cancelled).sort((a, b) => a.deadline - b.deadline);
+          const first = timers[0];
+          return <article className="today-live-card" key={entry.id}>
+            <div className="today-live-main">
+              <p className="eyebrow">Baking in progress</p>
+              <h3 title={entry.document.title}>{entry.document.title}</h3>
+              <div className="today-live-progress">
+                <span>{completed} of {total} steps complete</span><span>{total ? Math.round(completed / total * 100) : 0}%</span>
               </div>
-            </details>}
-            {name === "Baking" && bakes.recipes.map((item) => <div className="row" key={`${item.eventId}:${item.versionId}`}>
-              <p><strong>{item.name}</strong>{item.target ?? item.originalYield ? ` · ${item.target ?? item.originalYield} ${item.yieldUnit}` : ""}</p>
-              {item.oven.length > 0 && <p className="muted">Oven · {item.oven.map((temperature) => `${temperature} °F`).join(", ")}</p>}
-              {item.previousNote && <p className="muted">From last time · {item.previousNote}</p>}
+              <div className="today-progress-track" role="progressbar" aria-valuenow={completed}
+                aria-valuemin={0} aria-valuemax={total || 1} aria-label={"Progress for " + entry.document.title}>
+                <span style={{ width: (total ? completed / total * 100 : 0) + "%" }} /></div>
+              {step && <p className="today-live-next"><strong>Next:</strong> {step.version.document.name} · {step.step.instruction}</p>}
+              {first && <p className={"today-live-timer" + (first.deadline <= now ? " is-due" : "")}>
+                {first.deadline <= now ? "Timer overdue" : "Timer running"} · {first.label} · {timerTime(first.deadline - now)}
+              </p>}
+            </div>
+            <Button onClick={() => resume(entry.id)}>Resume baking <ChevronRight size={18} /></Button>
+          </article>;
+        })}</div>
+      </section>}
+      <div className="today-content-grid">
+        <section className="today-schedule-section stack compact" aria-label="Today's schedule">
+          <div className="today-section-heading"><h2>Today’s schedule</h2>
+            <button type="button" className="today-text-link" onClick={() => showCalendar(today)}>Open planner <ChevronRight size={15}/></button></div>
+          {scheduled.length > 0 ? <div className="today-event-list">
+            {scheduled.map(({ entry, day }) => {
+              const running = active.find((item) => item.document.eventId === entry.id && item.document.date === day);
+              return <EventCard key={entry.id + ":" + day} entry={entry} day={day} store={store} compact showNotes={false}
+                edit={() => edit(day, entry)} start={() => start(day, entry)}
+                resume={running ? () => resume(running.id) : undefined} />;
+            })}
+          </div> : <div className="today-schedule-empty">
+            <CalendarDays size={18}/><span>Nothing scheduled today.</span>
+            <Button tone="ghost" onClick={() => edit(today)}>Add an event</Button>
+          </div>}
+        </section>
+        <section className="today-todos panel stack compact" aria-label="Today's checklist">
+          <div className="today-section-heading"><h2>To do</h2>
+            <span className="today-section-count">{pending.length} left{marked.length ? " · " + done.length + " done" : ""}</span></div>
+          {pending.length === 0 && <p className="today-all-done muted">{marked.length ? "All of today's tasks are complete." : "No tasks due today."}</p>}
+          {sections.filter((name) => pending.some((task) => task.document.section === name)).map((name) =>
+            <div className="today-task-group" key={name}>
+              <h3>{name}</h3>
+              {pending.filter((task) => task.document.section === name).map((task) =>
+                <TaskRow key={task.id} task={task} store={store} />)}
             </div>)}
-            {name === "Photography" && <>
-              {bakes.recipes.filter((item) => item.photo).map((item) => <p key={`${item.eventId}:${item.versionId}`}>{item.name}</p>)}
-              <Button tone="ghost" onClick={showPhotos}>Open photo queue</Button>
-            </>}
-          </div>)}
-        </section>}
-      </div>}
-      {(tomorrow.length > 0 || dismissed.length > 0) && <section className="panel stack"><h2>Prepare for tomorrow</h2>
+          {done.length > 0 && <details className="today-done-tasks"><summary>Completed tasks · {done.length}</summary>
+            {done.map((task) => <TaskRow key={task.id} task={task} store={store} />)}
+          </details>}
+          {hasPrep && active.length === 0 && <details className="today-prep-details"><summary>Ingredients and equipment</summary>
+            <div className="today-prep-contents">
+              {bakes.ingredients.map((item) => <p key={item.key}><strong>{item.amount}</strong> · {item.name}{item.preparation ? " · " + item.preparation : ""}</p>)}
+              {bakes.equipment.length > 0 && <p><strong>Equipment:</strong> {bakes.equipment.join(", ")}</p>}
+            </div>
+          </details>}
+          <Button className="today-task-add-button" tone="ghost" onClick={() => setAdding(true)}><Plus size={16}/> Add task</Button>
+        </section>
+      </div>
+    </>}
+    {(tomorrow.length > 0 || dismissed.length > 0 || coming.length > 0) && <section className="today-later panel stack compact">
+      <div className="today-section-heading"><h2>Coming up</h2>
+        <button type="button" className="today-text-link" onClick={() => showCalendar(today)}>View calendar <ChevronRight size={15}/></button></div>
+      {coming.length > 0 && <div className="today-upcoming-list">{coming.slice(0, showAllUpcoming ? 12 : 3).map(({ entry, day }) =>
+        <button type="button" key={entry.id + ":" + day} onClick={() => showCalendar(day)}>
+          <span>{dateLabel(day, { weekday: "short", month: "short", day: "numeric" })}</span>
+          <strong>{entry.document.title}</strong><ChevronRight size={16} aria-hidden="true"/>
+        </button>)}</div>}
+      {coming.length > 3 && <Button tone="ghost" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
+        {showAllUpcoming ? "Show fewer dates" : "Show more dates"}</Button>}
+      {tomorrow.length > 0 && <details className="today-later-details"><summary>Tomorrow’s tasks · {tomorrow.length}</summary>
         {tomorrow.map((task) => <TaskRow key={task.id} task={task} store={store} />)}
-        {dismissed.length > 0 && <details>
-          <summary>Dismissed tasks</summary>
-          {dismissed.map((task) => <div className="row line" key={task.id}>
-            <p>{task.document.title}</p><Button tone="ghost" onClick={() => store.put("task", { ...task.document, status: "Open" }, task.id)}>Restore task</Button>
-          </div>)}
-        </details>}
-      </section>}
-      {coming.length > 0 && <section className="stack"><h2>Upcoming baking days</h2>
-        <div className="upcoming">{coming.map(({ entry, day }) => <button type="button" key={`${entry.id}:${day}`} onClick={() => showCalendar(day)}>
-          <strong>{dateLabel(day, { weekday: "short", month: "short", day: "numeric" })}</strong>{entry.document.title}</button>)}</div>
-      </section>}
-    </div>
-  </>;
+      </details>}
+      {dismissed.length > 0 && <details className="today-later-details"><summary>Dismissed tasks · {dismissed.length}</summary>
+        {dismissed.map((task) => <div className="today-dismissed-task" key={task.id}>
+          <span>{task.document.title}</span>
+          <Button tone="ghost" onClick={() => store.put("task", { ...task.document, status: "Open" }, task.id)}>Restore</Button>
+        </div>)}
+      </details>}
+    </section>}
+  </div>;
 }
