@@ -158,7 +158,7 @@ function ProductPhotos({ client, workspace, session, version, store }: {
           <button className="photos-gallery-preview" type="button" aria-label={"View " + entry.document.shot + " photo"}
             onClick={() => setPreview(entry.document.path)}>
             <Photo client={client} path={entry.document.path} alt={version.document.name + ", " + entry.document.shot} />
-            {selectedHero === entry.id && <span className="photos-gallery-hero">Main</span>}
+            {selectedHero === entry.id && <span className="photos-gallery-hero">Hero</span>}
           </button>
           <div className="photos-gallery-details">
             <strong>{entry.document.shot}</strong><small className="muted">{entry.document.use}</small>
@@ -167,7 +167,7 @@ function ProductPhotos({ client, workspace, session, version, store }: {
               {shotStatuses.map((name) => <option key={name}>{name}</option>)}</select></Field>
             <Button tone="ghost" disabled={selectedHero === entry.id} onClick={() =>
               store.put("session", { ...session.document, heroPhotos: { ...session.document.heroPhotos, [version.id]: entry.id } }, session.id)}>
-              {selectedHero === entry.id ? "Main photo" : "Set as main"}</Button>
+              {selectedHero === entry.id ? "Hero photo" : "Set as hero"}</Button>
           </div>
         </article>)}
       </div> : <p className="photos-empty muted">No photos saved for this batch.</p>}
@@ -250,7 +250,7 @@ export function Photos({ store, client, workspace }: { store: WorkspaceStore; cl
   const active = queue.find((item) => keyOf(item) === selected) ?? queue[0];
   return <div className="photos-page">
     <Heading title="Photos" detail="Product photography"/>
-    <p className="muted photos-page-intro">Manage photos for finished baking batches, choose main images, and record feedback.</p>
+    <p className="muted photos-page-intro">Manage finished-batch photos, choose hero shots, and record baking feedback.</p>
     {queue.length ? <div className="photos-layout">
       <aside className="photos-batch-nav" aria-label="Baking batches ready for photos">
         <div className="photos-batch-nav-heading"><h2>Ready for photos</h2><span className="muted">{queue.length}</span></div>
