@@ -219,8 +219,8 @@ test("deep-links to recipe and baking session screens and preserves browser hist
   await expect(page).toHaveURL(/\/bake\/[a-f0-9-]+$/);
   const sessionUrl = page.url();
   await page.reload();
-  await expect(page.getByRole("button", { name: "All sessions" })).toBeVisible();
-  await page.getByRole("button", { name: "All sessions" }).click();
+  await expect(page.getByRole("button", { name: "Leave baking session" })).toBeVisible();
+  await page.getByRole("button", { name: "Leave baking session" }).click();
   await expect(page).toHaveURL(/\/bake$/);
   await page.goBack();
   await expect(page).toHaveURL(sessionUrl);
