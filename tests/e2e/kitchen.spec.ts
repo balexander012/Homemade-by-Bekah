@@ -310,12 +310,13 @@ test("Today shows real tasks, moves checked items to completed, and allows editi
   await page.getByLabel("Task title").fill("Prepare vanilla for cookie dough");
   await page.getByRole("button", { name: "Save task" }).click();
   await expect(page.locator(".today-task-group")).toContainText("Prepare vanilla for cookie dough");
-  const checkbox = page.getByRole("checkbox", { name: "Prepare vanilla for cookie dough" });
-  await checkbox.check();
+  // Completing a task moves it into the collapsed completed section, so its
+  // original checkbox intentionally unmounts before Playwright's check() assertion.
+  await page.getByRole("checkbox", { name: "Prepare vanilla for cookie dough" }).click();
   await expect(page.getByText("Completed tasks · 1")).toBeVisible();
   await page.getByText("Completed tasks · 1").click();
   await expect(page.getByRole("checkbox", { name: "Prepare vanilla for cookie dough" })).toBeChecked();
-  await page.getByRole("checkbox", { name: "Prepare vanilla for cookie dough" }).uncheck();
+  await page.getByRole("checkbox", { name: "Prepare vanilla for cookie dough" }).click();
   await expect(page.locator(".today-task-group")).toContainText("Prepare vanilla for cookie dough");
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
