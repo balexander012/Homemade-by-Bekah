@@ -208,7 +208,7 @@ function TaskRow({ task, store }: { task: Entry<"task">; store: WorkspaceStore }
   </div>;
 }
 
-export function Today({ today, now, store, edit, start, resume, showCalendar, showPhotos, showRecipes }: {
+export function Today({ today, now, store, edit, start, resume, showCalendar, showRecipes }: {
   today: string; now: number; store: WorkspaceStore; edit: (date: string, event?: Entry<"event">) => void;
   start: (date: string, event?: Entry<"event">) => void; resume: (id: string) => void;
   showCalendar: (date: string) => void; showPhotos: () => void; showRecipes: () => void;
